@@ -19,14 +19,18 @@ class RedirectOldUrls
         $path = '/' . trim($request->path(), '/');
 
         $redirects = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
-            return Redirect::all()->keyBy('from_url');
+            return Redirect::all()->keyBy('from_url')->map(fn ($r) => [
+                'id' => $r->id,
+                'to_url' => $r->to_url,
+                'status_code' => $r->status_code,
+            ])->toArray();
         });
 
-        $redirect = $redirects->get($path) ?? $redirects->get($request->url());
+        $redirect = $redirects[$path] ?? $redirects[$request->url()] ?? null;
 
         if ($redirect) {
-            Redirect::where('id', $redirect->id)->increment('hits');
-            return redirect($redirect->to_url, $redirect->status_code);
+            Redirect::where('id', $redirect['id'])->increment('hits');
+            return redirect($redirect['to_url'], $redirect['status_code']);
         }
 
         return $next($request);
