@@ -10,13 +10,13 @@ return new class extends Migration
     {
         Schema::create('redirects', function (Blueprint $table) {
             $table->id();
-            $table->string('from_url', 2048);
+            $table->string('from_url', 768);
             $table->string('to_url', 2048);
             $table->unsignedSmallInteger('status_code')->default(301);
             $table->unsignedInteger('hits')->default(0);
             $table->timestamps();
 
-            $table->unique('from_url');
+            $table->unique('from_url', 'redirects_from_url_unique');
         });
     }
 
