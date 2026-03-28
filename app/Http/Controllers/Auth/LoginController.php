@@ -25,10 +25,19 @@ class LoginController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $user = Auth::user();
+            if ($user->is_active === false) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors(['email' => 'This account has been disabled.']);
+            }
             $request->session()->regenerate();
-            if (Auth::user()->role === 'admin' && !session()->has('url.intended')) {
+            if ($user->role === 'admin' && ! session()->has('url.intended')) {
                 return redirect()->route('admin.dashboard');
             }
+
             return redirect()->intended(route('home'));
         }
 
@@ -40,6 +49,7 @@ class LoginController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect('/');
     }
 }

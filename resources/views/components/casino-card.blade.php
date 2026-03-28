@@ -11,7 +11,10 @@
             <div class="w-16 h-16 rounded-xl bg-slate-800/80 mb-4 flex items-center justify-center text-xl font-bold text-amber-500/90">{{ substr($casino->name, 0, 1) }}</div>
         @endif
         <h2 class="font-semibold text-white group-hover:text-amber-400 transition-colors duration-200">{{ $casino->name }}</h2>
-        <p class="text-sm text-gray-500 mt-1">{{ $casino->country }}</p>
+        @php
+            $cardLoc = collect([$casino->locality, $casino->region])->filter()->implode(', ');
+        @endphp
+        <p class="text-sm text-gray-500 mt-1">{{ $casino->country }}@if($cardLoc)<span class="text-gray-600"> · </span>{{ $cardLoc }}@endif</p>
         @if($casino->average_rating)
             <div class="mt-3 flex items-center gap-1.5 text-amber-400/90">
                 <x-star-rating :rating="$casino->average_rating" />

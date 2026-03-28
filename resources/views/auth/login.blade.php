@@ -3,6 +3,9 @@
 @section('content')
 <div class="max-w-md mx-auto">
     <h1 class="text-2xl font-bold text-amber-400 font-serif mb-6">Log In</h1>
+    @if(session('success'))
+        <div class="mb-4 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-lg text-sm">{{ session('success') }}</div>
+    @endif
     <form method="POST" action="{{ route('login') }}" class="space-y-4">
         @csrf
         <div>
@@ -27,6 +30,7 @@
         </div>
         <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-amber-950 font-semibold py-2 rounded-lg">Log In</button>
     </form>
-    <p class="mt-4 text-gray-400 text-sm">Don't have an account? <a href="{{ route('register') }}" class="text-amber-400 hover:underline">Register</a></p>
+    <p class="mt-4 text-gray-400 text-sm"><a href="{{ route('password.request') }}" class="text-amber-400 hover:underline">Forgot your password?</a></p>
+    <p class="mt-2 text-gray-400 text-sm">Don't have an account? <a href="{{ route('register') }}" class="text-amber-400 hover:underline">Register</a></p>
 </div>
 @endsection

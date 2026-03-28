@@ -21,6 +21,10 @@ class RegisterController extends Controller
 
     public function register(Request $request)
     {
+        if ($request->filled('company_website')) {
+            abort(422);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -31,12 +35,14 @@ class RegisterController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'role' => 'user',
+            'is_active' => true,
         ]);
-        $user->role = 'user';
-        $user->save();
+
+        $user->sendEmailVerificationNotification();
 
         Auth::login($user);
 
-        return redirect()->intended(route('home'));
+        return redirect()->route('verification.notice');
     }
 }

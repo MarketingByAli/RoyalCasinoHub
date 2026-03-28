@@ -1,10 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-md mx-auto">
+<div class="max-w-md mx-auto relative">
     <h1 class="text-2xl font-bold text-amber-400 font-serif mb-6">Register</h1>
     <form method="POST" action="{{ route('register') }}" class="space-y-4">
         @csrf
+        <div class="absolute -left-[9999px] opacity-0 pointer-events-none" aria-hidden="true">
+            <label>Company website</label>
+            <input type="text" name="company_website" tabindex="-1" autocomplete="off" value="">
+        </div>
         <div>
             <label class="block text-sm text-gray-400 mb-1">Name</label>
             <input type="text" name="name" value="{{ old('name') }}" required autofocus

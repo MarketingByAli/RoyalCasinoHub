@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Casino;
 use App\Models\ClaimedListing;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ClaimController extends Controller
 {
     public function store(Request $request)
     {
+        Gate::authorize('create', ClaimedListing::class);
+
         $validated = $request->validate([
             'casino_id' => 'required|exists:casinos,id',
         ]);

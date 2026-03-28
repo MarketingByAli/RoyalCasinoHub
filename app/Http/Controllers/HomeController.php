@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Casino;
+use App\Models\Review;
 use App\Models\SeoSetting;
 use App\Services\SeoService;
 
@@ -13,10 +14,13 @@ class HomeController extends Controller
         $featuredCasinos = Casino::published()
             ->withCount('approvedReviews')
             ->orderByDesc('reviews_count')
+            ->orderBy('region')
+            ->orderBy('locality')
+            ->orderBy('name')
             ->limit(12)
             ->get();
 
-        $latestReviews = \App\Models\Review::approved()
+        $latestReviews = Review::approved()
             ->with(['casino', 'user'])
             ->latest()
             ->limit(5)

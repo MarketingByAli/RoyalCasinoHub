@@ -12,12 +12,14 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(SeoSettingSeeder::class);
 
-        if (!User::where('email', 'admin@royalcasinohub.com')->exists()) {
+        if (! User::where('email', 'admin@royalcasinohub.com')->exists()) {
             User::create([
                 'name' => 'Admin',
                 'email' => 'admin@royalcasinohub.com',
+                'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'role' => 'admin',
+                'is_active' => true,
             ]);
         }
     }

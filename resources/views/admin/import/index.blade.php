@@ -8,14 +8,15 @@
         <h2 class="text-lg font-semibold text-white mb-4">Import Instructions</h2>
         <ul class="text-gray-400 space-y-2 text-sm mb-4">
             <li>• <strong class="text-amber-400">Required columns:</strong> <code class="bg-slate-900 px-1 rounded">name</code>, <code class="bg-slate-900 px-1 rounded">country</code></li>
-            <li>• <strong class="text-amber-400">Optional column:</strong> <code class="bg-slate-900 px-1 rounded">website</code> (must be valid URL if provided)</li>
+            <li>• <strong class="text-amber-400">Optional columns:</strong> <code class="bg-slate-900 px-1 rounded">website</code>, <code class="bg-slate-900 px-1 rounded">region</code>, <code class="bg-slate-900 px-1 rounded">locality</code>, <code class="bg-slate-900 px-1 rounded">linkedin</code> (or <code class="bg-slate-900 px-1 rounded">social_linkedin</code>)</li>
+            <li>• URLs must be valid when provided. Country listings sort by region, then locality, then name.</li>
             <li>• First row must be the header. Column names are case-insensitive.</li>
             <li>• Max file size: 10 MB. Accepted formats: .csv, .txt</li>
         </ul>
         <p class="text-gray-500 text-sm">Example CSV:</p>
-        <pre class="bg-slate-900 rounded-lg p-4 mt-2 text-xs text-gray-300 overflow-x-auto">name,country,website
-Bet365 Casino,United Kingdom,https://www.bet365.com
-888 Casino,Malta,https://www.888casino.com</pre>
+        <pre class="bg-slate-900 rounded-lg p-4 mt-2 text-xs text-gray-300 overflow-x-auto">name,country,region,locality,website,linkedin
+Example Casino,United Kingdom,England,London,https://example.com,https://www.linkedin.com/company/example
+Another Casino,United States,Nevada,Las Vegas,https://another.example.com,</pre>
     </div>
 
     <form id="import-form" action="{{ route('admin.import.store') }}" method="POST" enctype="multipart/form-data" class="mb-8">
@@ -86,7 +87,10 @@ Bet365 Casino,United Kingdom,https://www.bet365.com
                                 <p class="text-gray-500 text-xs font-mono">
                                     name: "{{ $error['data']['name'] ?? '' }}",
                                     country: "{{ $error['data']['country'] ?? '' }}",
-                                    website: "{{ $error['data']['website'] ?? '' }}"
+                                    region: "{{ $error['data']['region'] ?? '' }}",
+                                    locality: "{{ $error['data']['locality'] ?? '' }}",
+                                    website: "{{ $error['data']['website'] ?? '' }}",
+                                    linkedin: "{{ $error['data']['linkedin'] ?? '' }}"
                                 </p>
                             </div>
                         @endforeach
@@ -159,6 +163,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const nameIdx = header.indexOf('name');
         const countryIdx = header.indexOf('country');
         const websiteIdx = header.indexOf('website');
+        const regionIdx = header.indexOf('region');
+        const localityIdx = header.indexOf('locality');
+        let linkedinIdx = header.indexOf('linkedin');
+        if (linkedinIdx === -1) linkedinIdx = header.indexOf('social_linkedin');
 
         if (nameIdx === -1 || countryIdx === -1) {
             progressStatus.textContent = 'CSV must have "name" and "country" columns.';
@@ -173,7 +181,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const name = (cols[nameIdx] || '').trim();
             const country = (cols[countryIdx] || '').trim();
             const website = websiteIdx >= 0 ? (cols[websiteIdx] || '').trim() : '';
-            rows.push({ name, country, website });
+            const region = regionIdx >= 0 ? (cols[regionIdx] || '').trim() : '';
+            const locality = localityIdx >= 0 ? (cols[localityIdx] || '').trim() : '';
+            const linkedin = linkedinIdx >= 0 ? (cols[linkedinIdx] || '').trim() : '';
+            rows.push({ name, country, website, region, locality, linkedin });
         }
 
         const BATCH_SIZE = 100;
@@ -270,7 +281,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <p class="text-gray-500 text-xs font-mono">
                                         name: "${esc(e.data && e.data.name)}",
                                         country: "${esc(e.data && e.data.country)}",
-                                        website: "${esc(e.data && e.data.website)}"
+                                        region: "${esc(e.data && e.data.region)}",
+                                        locality: "${esc(e.data && e.data.locality)}",
+                                        website: "${esc(e.data && e.data.website)}",
+                                        linkedin: "${esc(e.data && e.data.linkedin)}"
                                     </p>
                                 </div>
                             `).join('')}

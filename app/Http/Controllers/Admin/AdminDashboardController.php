@@ -7,6 +7,7 @@ use App\Models\Casino;
 use App\Models\ClaimedListing;
 use App\Models\EnrichmentQueue;
 use App\Models\Review;
+use Illuminate\Support\Carbon;
 
 class AdminDashboardController extends Controller
 {
@@ -20,6 +21,12 @@ class AdminDashboardController extends Controller
             'pending_enrichment' => EnrichmentQueue::pending()->count(),
         ];
 
-        return view('admin.dashboard', compact('stats'));
+        $reviewTrend = [];
+        for ($i = 13; $i >= 0; $i--) {
+            $day = Carbon::today()->subDays($i);
+            $reviewTrend[$day->toDateString()] = Review::whereDate('created_at', $day)->count();
+        }
+
+        return view('admin.dashboard', compact('stats', 'reviewTrend'));
     }
 }

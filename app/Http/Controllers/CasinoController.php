@@ -3,20 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Models\Casino;
+use App\Models\CasinoDailyView;
+use App\Models\ReviewVote;
 use App\Services\SeoService;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CasinoController extends Controller
 {
     public function show(string $slug, SeoService $seoService)
     {
         $casino = Casino::published()
-            ->with(['approvedReviews' => fn ($q) => $q->with('user')->latest()->limit(10)])
-            ->with(['news' => fn ($q) => $q->latest('published_at')->limit(5)])
+            ->with([
+                'tags',
+                'activeOffers',
+                'approvedReviews' => fn ($q) => $q->with(['user', 'ownerReply.user', 'casino'])->latest()->limit(10),
+                'news' => fn ($q) => $q->latest('published_at')->limit(5),
+            ])
             ->where('slug', $slug)
             ->firstOrFail();
 
-        $schema = $seoService->generateCasinoSchema($casino);
+        CasinoDailyView::firstOrCreate(
+            [
+                'casino_id' => $casino->id,
+                'day' => now()->toDateString(),
+            ],
+            ['views' => 0]
+        )->increment('views');
+
+        $schema = $seoService->generateCasinoSchema($casino, $casino->approvedReviews);
+
+        $userReviewVotes = collect();
+        if (Auth::check()) {
+            $ids = $casino->approvedReviews->pluck('id');
+            if ($ids->isNotEmpty()) {
+                $userReviewVotes = ReviewVote::where('user_id', Auth::id())
+                    ->whereIn('review_id', $ids)
+                    ->pluck('helpful', 'review_id');
+            }
+        }
         $breadcrumbSchema = $seoService->generateBreadcrumbSchema([
             ['name' => 'Home', 'url' => url('/')],
             ['name' => $casino->country, 'url' => url("/country/{$casino->country_slug}")],
@@ -29,6 +53,23 @@ class CasinoController extends Controller
         $robots = $casino->robots ?: 'index,follow';
         $ogImage = $casino->logo_url ?: null;
 
+        $tagIds = $casino->tags->pluck('id');
+        $relatedCasinos = Casino::published()
+            ->where('id', '!=', $casino->id)
+            ->where(function ($q) use ($casino, $tagIds) {
+                $q->where('country_slug', $casino->country_slug);
+                if ($tagIds->isNotEmpty()) {
+                    $q->orWhereHas('tags', fn ($t) => $t->whereIn('tags.id', $tagIds));
+                }
+            })
+            ->orderByDesc('average_rating')
+            ->orderByDesc('reviews_count')
+            ->limit(6)
+            ->get();
+
+        $isFavorite = Auth::check()
+            && Auth::user()->favoriteCasinos()->whereKey($casino->id)->exists();
+
         return view('casino.show', [
             'casino' => $casino,
             'schema' => $schema,
@@ -38,6 +79,9 @@ class CasinoController extends Controller
             'canonical' => $canonical,
             'robots' => $robots,
             'ogImage' => $ogImage,
+            'userReviewVotes' => $userReviewVotes,
+            'relatedCasinos' => $relatedCasinos,
+            'isFavorite' => $isFavorite,
         ]);
     }
 }

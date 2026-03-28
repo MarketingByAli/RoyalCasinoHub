@@ -10,16 +10,28 @@ class CountryController extends Controller
 {
     public function show(Request $request, string $slug)
     {
-        $casinos = Casino::published()
+        $sort = $request->query('sort', 'name');
+        if (! in_array($sort, ['name', 'top-rated', 'most-reviewed', 'newest'], true)) {
+            $sort = 'name';
+        }
+
+        $query = Casino::published()
             ->byCountry($slug)
-            ->withCount('approvedReviews')
-            ->orderByDesc('reviews_count')
-            ->paginate(24);
+            ->withCount('approvedReviews');
+
+        match ($sort) {
+            'top-rated' => $query->orderByDesc('average_rating')->orderBy('name'),
+            'most-reviewed' => $query->orderByDesc('reviews_count')->orderBy('name'),
+            'newest' => $query->latest(),
+            default => $query->orderBy('region')->orderBy('locality')->orderBy('name'),
+        };
+
+        $casinos = $query->paginate(24)->withQueryString();
 
         $country = $casinos->first()?->country ?? str_replace('-', ' ', ucwords($slug));
 
-        $metaTitle = "Best Online Casinos in {$country} " . now()->year . " | " . SeoSetting::get('site_name', 'RoyalCasinoHub');
-        $metaDescription = "Discover the best online casinos in {$country}. Honest reviews, ratings, bonuses and more. Updated " . now()->year . ".";
+        $metaTitle = "Best Online Casinos in {$country} ".now()->year.' | '.SeoSetting::get('site_name', 'RoyalCasinoHub');
+        $metaDescription = "Discover the best online casinos in {$country}. Honest reviews, ratings, bonuses and more. Updated ".now()->year.'.';
 
         $breadcrumbSchema = [
             '@context' => 'https://schema.org',
@@ -30,19 +42,16 @@ class CountryController extends Controller
             ],
         ];
 
-        $canonical = url("/country/{$slug}");
+        $canonical = $casinos->url($casinos->currentPage());
 
-        $prevPage = $casinos->currentPage() > 1
-            ? url("/country/{$slug}") . ($casinos->currentPage() > 2 ? '?page=' . ($casinos->currentPage() - 1) : '')
-            : null;
-        $nextPage = $casinos->hasMorePages()
-            ? url("/country/{$slug}?page=" . ($casinos->currentPage() + 1))
-            : null;
+        $prevPage = $casinos->currentPage() > 1 ? $casinos->previousPageUrl() : null;
+        $nextPage = $casinos->hasMorePages() ? $casinos->nextPageUrl() : null;
 
         return view('country.show', [
             'casinos' => $casinos,
             'country' => $country,
             'countrySlug' => $slug,
+            'sort' => $sort,
             'meta_title' => $metaTitle,
             'meta_description' => $metaDescription,
             'canonical' => $canonical,

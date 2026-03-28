@@ -10,3 +10,5 @@ Artisan::command('inspire', function () {
 
 Schedule::command('enrichment:process --limit=20')->everyFiveMinutes();
 Schedule::command('news:refresh --limit=50')->hourly();
+Schedule::command('digest:weekly')->weeklyOn(1, '8:00');
+Schedule::command('casinos:check-links --limit=200')->daily();

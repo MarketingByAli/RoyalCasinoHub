@@ -10,6 +10,7 @@
         $breadcrumbSchema = $breadcrumbSchema ?? null;
         $noindex = $noindex ?? false;
         $ogImage = $ogImage ?? null;
+        $ogType = $ogType ?? 'website';
         $hreflang = $hreflang ?? [];
         $prevPage = $prevPage ?? null;
         $nextPage = $nextPage ?? null;
@@ -23,6 +24,7 @@
         :breadcrumbSchema="$breadcrumbSchema"
         :noindex="$noindex"
         :image="$ogImage"
+        :type="$ogType"
         :hreflang="$hreflang"
         :prevPage="$prevPage"
         :nextPage="$nextPage"
@@ -51,8 +53,11 @@
                         <input type="search" name="q" value="{{ request('q') }}" placeholder="Search casinos..."
                             class="bg-slate-900/80 border border-amber-900/20 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/20 focus:outline-none w-52 transition-all">
                     </form>
+                    <a href="{{ route('browse.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Browse</a>
+                    <a href="{{ route('blog.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Blog</a>
                     <a href="{{ route('reviews.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Reviews</a>
                     @auth
+                        <a href="{{ route('account.index') }}" class="text-gray-400 hover:text-amber-400 text-sm font-medium">Account</a>
                         @if(auth()->user()->role === 'admin')
                             <a href="{{ route('admin.dashboard') }}" class="text-amber-400 hover:text-amber-300 text-sm font-medium">Admin</a>
                         @elseif(auth()->user()->role === 'casino_owner')
@@ -89,8 +94,11 @@
             </form>
             <nav class="space-y-2">
                 <a href="{{ route('home') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Home</a>
+                <a href="{{ route('browse.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Browse</a>
+                <a href="{{ route('blog.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Blog</a>
                 <a href="{{ route('reviews.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Reviews</a>
                 @auth
+                    <a href="{{ route('account.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Account</a>
                     @if(auth()->user()->role === 'admin')
                         <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2.5 rounded-lg text-amber-400 hover:bg-amber-500/10 transition-all">Admin</a>
                     @elseif(auth()->user()->role === 'casino_owner')
@@ -108,6 +116,18 @@
         </div>
     </div>
 
+    @if(!session('cookie_consent'))
+        <div class="relative z-50 bg-slate-900/95 border-b border-amber-900/30 px-4 py-3 text-sm text-gray-300">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p>We use essential cookies to run this site. By continuing you accept our <a href="{{ route('privacy') }}" class="text-amber-400 hover:underline">privacy policy</a>.</p>
+                <form action="{{ route('cookie-consent.store') }}" method="POST" class="flex-shrink-0">
+                    @csrf
+                    <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-4 py-2 rounded-lg text-sm">Accept</button>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <main class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         @if(session('success'))
             <div class="mb-6 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-lg">{{ session('success') }}</div>
@@ -122,7 +142,11 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <p class="text-gray-500 text-sm">&copy; {{ date('Y') }} RoyalCasinoHub. All rights reserved.</p>
-                <p class="text-gray-600 text-sm">Responsible gambling. 18+ only.</p>
+                <div class="flex flex-wrap items-center gap-4 text-sm">
+                    <a href="{{ route('terms') }}" class="text-gray-500 hover:text-amber-400">Terms</a>
+                    <a href="{{ route('privacy') }}" class="text-gray-500 hover:text-amber-400">Privacy</a>
+                    <span class="text-gray-600">Responsible gambling. 18+ only.</span>
+                </div>
             </div>
         </div>
     </footer>

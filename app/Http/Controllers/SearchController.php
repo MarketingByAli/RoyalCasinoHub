@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Casino;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class SearchController extends Controller
 {
@@ -18,19 +19,24 @@ class SearchController extends Controller
                 ->where(function ($q) use ($escaped) {
                     $q->where('name', 'like', "%{$escaped}%")
                         ->orWhere('description', 'like', "%{$escaped}%")
-                        ->orWhere('short_description', 'like', "%{$escaped}%");
+                        ->orWhere('short_description', 'like', "%{$escaped}%")
+                        ->orWhere('region', 'like', "%{$escaped}%")
+                        ->orWhere('locality', 'like', "%{$escaped}%");
                 })
                 ->withCount('approvedReviews')
                 ->orderByDesc('reviews_count')
+                ->orderBy('region')
+                ->orderBy('locality')
+                ->orderBy('name')
                 ->paginate(24)
                 ->withQueryString();
         }
 
-        $metaTitle = $query ? "Search: {$query} | RoyalCasinoHub" : "Search Casinos | RoyalCasinoHub";
-        $metaDescription = $query ? "Search results for {$query}." : "Search our directory of online casinos.";
+        $metaTitle = $query ? "Search: {$query} | RoyalCasinoHub" : 'Search Casinos | RoyalCasinoHub';
+        $metaDescription = $query ? "Search results for {$query}." : 'Search our directory of online casinos.';
 
         $canonical = $query
-            ? url("/search?q=" . urlencode($query))
+            ? url('/search?q='.urlencode($query))
             : url('/search');
 
         $breadcrumbSchema = [
@@ -44,12 +50,12 @@ class SearchController extends Controller
 
         $prevPage = null;
         $nextPage = null;
-        if ($casinos instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+        if ($casinos instanceof LengthAwarePaginator) {
             $prevPage = $casinos->currentPage() > 1
-                ? url('/search') . '?q=' . urlencode($query) . ($casinos->currentPage() > 2 ? '&page=' . ($casinos->currentPage() - 1) : '')
+                ? url('/search').'?q='.urlencode($query).($casinos->currentPage() > 2 ? '&page='.($casinos->currentPage() - 1) : '')
                 : null;
             $nextPage = $casinos->hasMorePages()
-                ? url('/search') . '?q=' . urlencode($query) . '&page=' . ($casinos->currentPage() + 1)
+                ? url('/search').'?q='.urlencode($query).'&page='.($casinos->currentPage() + 1)
                 : null;
         }
 

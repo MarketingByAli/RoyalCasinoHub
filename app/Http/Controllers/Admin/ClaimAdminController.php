@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClaimedListing;
+use App\Notifications\ClaimModeratedNotification;
 use Illuminate\Http\Request;
 
 class ClaimAdminController extends Controller
@@ -38,6 +39,11 @@ class ClaimAdminController extends Controller
             $user->save();
         }
 
+        $claim->loadMissing('user', 'casino');
+        if ($claim->user) {
+            $claim->user->notify(new ClaimModeratedNotification($claim, 'approved'));
+        }
+
         return back()->with('success', 'Claim approved.');
     }
 
@@ -48,6 +54,11 @@ class ClaimAdminController extends Controller
         $claim->status = 'rejected';
         $claim->notes = $request->input('notes');
         $claim->save();
+
+        $claim->loadMissing('user', 'casino');
+        if ($claim->user) {
+            $claim->user->notify(new ClaimModeratedNotification($claim, 'rejected'));
+        }
 
         return back()->with('success', 'Claim rejected.');
     }

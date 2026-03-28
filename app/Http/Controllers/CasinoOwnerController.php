@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Casino;
+use App\Models\CasinoDailyView;
 use Illuminate\Http\Request;
 
 class CasinoOwnerController extends Controller
@@ -77,5 +78,38 @@ class CasinoOwnerController extends Controller
         $casino->update($validated);
 
         return back()->with('success', 'Listing updated.');
+    }
+
+    public function analytics(Casino $casino, Request $request)
+    {
+        if (! $casino->canBeEditedBy($request->user())) {
+            abort(403);
+        }
+
+        $series = CasinoDailyView::query()
+            ->where('casino_id', $casino->id)
+            ->where('day', '>=', now()->subDays(30)->toDateString())
+            ->orderBy('day')
+            ->get(['day', 'views']);
+
+        $breadcrumbSchema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => [
+                ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => url('/')],
+                ['@type' => 'ListItem', 'position' => 2, 'name' => 'My Listings', 'item' => url('/my-listings')],
+                ['@type' => 'ListItem', 'position' => 3, 'name' => 'Analytics', 'item' => null],
+            ],
+        ];
+
+        return view('casino-owner.analytics', [
+            'casino' => $casino,
+            'series' => $series,
+            'meta_title' => "Analytics — {$casino->name} | RoyalCasinoHub",
+            'meta_description' => 'Listing traffic for your casino.',
+            'canonical' => route('casino-owner.analytics', $casino),
+            'breadcrumbSchema' => $breadcrumbSchema,
+            'noindex' => true,
+        ]);
     }
 }

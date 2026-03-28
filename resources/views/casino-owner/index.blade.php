@@ -11,7 +11,10 @@
             @endif
             <h2 class="font-semibold text-white">{{ $casino->name }}</h2>
             <p class="text-sm text-gray-500 mt-1">{{ $casino->country }}</p>
-            <a href="{{ route('casino-owner.edit', $casino) }}" class="inline-block mt-4 text-amber-400 hover:text-amber-300">Edit Listing →</a>
+            <div class="mt-4 flex flex-wrap gap-3">
+                <a href="{{ route('casino-owner.analytics', $casino) }}" class="text-amber-400/90 hover:text-amber-300 text-sm">Analytics</a>
+                <a href="{{ route('casino-owner.edit', $casino) }}" class="text-amber-400 hover:text-amber-300 text-sm">Edit listing →</a>
+            </div>
         </div>
     @endforeach
 </div>

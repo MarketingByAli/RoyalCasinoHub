@@ -26,9 +26,17 @@
                 <a href="{{ route('admin.import.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.import.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">CSV Import</a>
                 <a href="{{ route('admin.reviews.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.reviews.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Reviews</a>
                 <a href="{{ route('admin.claims.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.claims.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Claims</a>
+                <a href="{{ route('admin.users.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.users.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Users</a>
                 <a href="{{ route('admin.redirects.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.redirects.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Redirects</a>
                 <a href="{{ route('admin.seo.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.seo.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">SEO Settings</a>
                 <a href="{{ route('admin.enrichment.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.enrichment.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Enrichment</a>
+                <a href="{{ route('admin.activity.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.activity.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Activity log</a>
+                <a href="{{ route('admin.casino-reports.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.casino-reports.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Casino reports</a>
+                <span class="block px-4 pt-4 text-xs text-gray-600 uppercase tracking-wider">Exports</span>
+                <a href="{{ route('admin.exports.users') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 text-gray-400 text-sm">Users CSV</a>
+                <a href="{{ route('admin.exports.casinos') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 text-gray-400 text-sm">Casinos CSV</a>
+                <a href="{{ route('admin.exports.reviews') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 text-gray-400 text-sm">Reviews CSV</a>
+                <a href="{{ route('admin.exports.claims') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 text-gray-400 text-sm">Claims CSV</a>
             </nav>
             <a href="{{ route('home') }}" class="block mt-8 px-4 py-2 text-gray-500 hover:text-amber-400">← Back to Site</a>
         </aside>
