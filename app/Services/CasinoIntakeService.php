@@ -53,7 +53,10 @@ class CasinoIntakeService
         if ($website) {
             $host = $this->normalizedHost($website);
             if ($host) {
-                $exists = Casino::query()->whereNotNull('website')->get()
+                $exists = Casino::query()
+                    ->where('status', 'published')
+                    ->whereNotNull('website')
+                    ->get()
                     ->contains(fn ($c) => $this->normalizedHost((string) $c->website) === $host);
                 if ($exists) {
                     return 'A casino with this website domain may already exist.';
@@ -61,7 +64,7 @@ class CasinoIntakeService
             }
         }
 
-        if (Casino::query()->where('country_slug', $countrySlug)->where(function ($q) use ($name) {
+        if (Casino::query()->where('status', 'published')->where('country_slug', $countrySlug)->where(function ($q) use ($name) {
             $q->whereRaw('LOWER(name) = ?', [mb_strtolower($name)]);
         })->exists()) {
             return 'Possible duplicate casino name for this country.';
