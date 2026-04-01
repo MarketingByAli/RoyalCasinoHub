@@ -15,7 +15,7 @@ class CompareController extends Controller
 
         $casinos = $slugs === []
             ? collect()
-            : Casino::published()->whereIn('slug', $slugs)->with('tags')->get()->sortBy(function ($c) use ($slugs) {
+            : Casino::published()->whereIn('slug', $slugs)->get()->sortBy(function ($c) use ($slugs) {
                 $i = array_search($c->slug, $slugs, true);
 
                 return $i !== false ? $i : 999;

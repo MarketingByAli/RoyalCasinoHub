@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Casino;
 use App\Models\CasinoOffer;
-use App\Models\Tag;
 use App\Services\ActivityLogger;
 use App\Services\CasinoIntakeService;
 use App\Services\EnrichmentService;
@@ -117,10 +116,9 @@ class CasinoAdminController extends Controller
 
     public function edit(Casino $casino)
     {
-        $tags = Tag::orderBy('name')->get();
-        $casino->load('tags', 'offers');
+        $casino->load('offers');
 
-        return view('admin.casinos.edit', compact('casino', 'tags'));
+        return view('admin.casinos.edit', compact('casino'));
     }
 
     public function update(Request $request, Casino $casino)
@@ -163,8 +161,6 @@ class CasinoAdminController extends Controller
             'last_verified_at' => 'nullable|date',
             'tier' => 'nullable|in:standard,featured',
             'featured_until' => 'nullable|date',
-            'tag_ids' => 'nullable|array',
-            'tag_ids.*' => 'integer|exists:tags,id',
             'offer_title' => 'nullable|string|max:255',
             'offer_welcome_bonus_text' => 'nullable|string|max:2000',
             'offer_wagering_requirement' => 'nullable|string|max:255',
@@ -205,9 +201,6 @@ class CasinoAdminController extends Controller
         unset($validated['social_linkedin']);
         $validated['social_links'] = Casino::mergeSocialLinks($casino->social_links, $socialLinkedin);
 
-        $tagIds = $validated['tag_ids'] ?? [];
-        unset($validated['tag_ids']);
-
         $offerFields = [
             'title' => $validated['offer_title'] ?? null,
             'welcome_bonus_text' => $validated['offer_welcome_bonus_text'] ?? null,
@@ -220,8 +213,6 @@ class CasinoAdminController extends Controller
         $casino->update($validated);
         $casino->status = $status;
         $casino->save();
-
-        $casino->tags()->sync($tagIds);
 
         $hasOffer = collect($offerFields)->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty();
         if ($hasOffer) {

@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Casino extends Model
@@ -213,11 +212,6 @@ class Casino extends Model
     public function activeOffers(): HasMany
     {
         return $this->offers()->where('is_active', true);
-    }
-
-    public function tags(): BelongsToMany
-    {
-        return $this->belongsToMany(Tag::class, 'casino_tag')->withTimestamps();
     }
 
     public function dailyViews(): HasMany

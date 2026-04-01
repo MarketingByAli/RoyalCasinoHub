@@ -20,7 +20,6 @@
             ? json_encode($casino->support_channels, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
             : '';
     }
-    $selectedTagIds = old('tag_ids', $casino->tags->pluck('id')->all());
 @endphp
 
 @section('content')
@@ -196,21 +195,6 @@
                 <input type="datetime-local" name="featured_until" value="{{ old('featured_until', $casino->featured_until?->format('Y-m-d\TH:i')) }}" class="w-full bg-slate-800/50 border border-amber-900/30 rounded-lg px-4 py-2">
             </div>
         </div>
-    </div>
-
-    <div class="space-y-4">
-        <h2 class="text-lg font-semibold text-gray-200 border-b border-amber-900/30 pb-2">Tags</h2>
-        <div class="flex flex-wrap gap-3">
-            @foreach ($tags as $tag)
-                <label class="inline-flex items-center gap-2 text-sm text-gray-300">
-                    <input type="checkbox" name="tag_ids[]" value="{{ $tag->id }}" {{ in_array($tag->id, $selectedTagIds, true) ? 'checked' : '' }} class="rounded border-amber-900/40 bg-slate-800">
-                    {{ $tag->name }}
-                </label>
-            @endforeach
-        </div>
-        @if ($tags->isEmpty())
-            <p class="text-sm text-gray-500">No tags yet. Create tags in the database or a future admin screen.</p>
-        @endif
     </div>
 
     <div class="space-y-4">

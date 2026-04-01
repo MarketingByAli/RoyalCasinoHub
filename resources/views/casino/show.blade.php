@@ -66,13 +66,6 @@
                             @endforeach
                         </dl>
                     @endif
-                    @if($casino->tags->isNotEmpty())
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            @foreach($casino->tags as $tag)
-                                <span class="inline-block text-xs font-medium px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-200/90">{{ $tag->name }}</span>
-                            @endforeach
-                        </div>
-                    @endif
                     <div class="mt-4 flex flex-wrap items-center gap-3">
                         @if($casino->website)
                             <a href="{{ $casino->website }}" target="_blank" rel="nofollow noopener" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-2.5 rounded-xl transition-all hover:shadow-lg hover:shadow-amber-500/25">Visit Casino</a>

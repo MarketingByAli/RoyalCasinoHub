@@ -14,7 +14,6 @@ class CasinoController extends Controller
     {
         $casino = Casino::published()
             ->with([
-                'tags',
                 'activeOffers',
                 'approvedReviews' => fn ($q) => $q->with(['user', 'ownerReply.user', 'casino'])->latest()->limit(10),
                 'news' => fn ($q) => $q->latest('published_at')->limit(5),
@@ -53,15 +52,9 @@ class CasinoController extends Controller
         $robots = $casino->robots ?: 'index,follow';
         $ogImage = $casino->logo_url ?: null;
 
-        $tagIds = $casino->tags->pluck('id');
         $relatedCasinos = Casino::published()
             ->where('id', '!=', $casino->id)
-            ->where(function ($q) use ($casino, $tagIds) {
-                $q->where('country_slug', $casino->country_slug);
-                if ($tagIds->isNotEmpty()) {
-                    $q->orWhereHas('tags', fn ($t) => $t->whereIn('tags.id', $tagIds));
-                }
-            })
+            ->where('country_slug', $casino->country_slug)
             ->orderByDesc('average_rating')
             ->orderByDesc('reviews_count')
             ->limit(6)

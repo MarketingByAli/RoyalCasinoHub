@@ -21,7 +21,6 @@ use App\Http\Controllers\CasinoOwnerController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\CasinoReportAdminController;
 use App\Http\Controllers\Admin\ExportController;
-use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\CompareController;
 use App\Http\Controllers\CookieConsentController;
@@ -68,8 +67,6 @@ Route::get('/sitemap-casinos-{page}.xml', [SitemapController::class, 'casinos'])
 Route::get('/', HomeController::class)->name('home');
 Route::get('/casino/{slug}', [CasinoController::class, 'show'])->name('casino.show');
 Route::get('/country/{slug}', [CountryController::class, 'show'])->name('country.show');
-Route::get('/browse', [BrowseController::class, 'index'])->name('browse.index');
-Route::get('/browse/{tagSlug}', [BrowseController::class, 'tag'])->name('browse.tag');
 Route::get('/compare', [CompareController::class, 'show'])->name('compare.show');
 Route::get('/blog', [PostController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [PostController::class, 'show'])->name('blog.show');
