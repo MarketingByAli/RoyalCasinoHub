@@ -61,7 +61,7 @@ Another Casino,United States,Nevada,Las Vegas,https://another.example.com,</pre>
                     <p class="text-sm text-gray-400">Imported</p>
                 </div>
                 <div class="bg-slate-900/50 rounded-lg p-4">
-                    <p class="text-2xl font-bold text-red-400">{{ count(session('errors', [])) }}</p>
+                    <p class="text-2xl font-bold text-red-400">{{ count(session('import_errors', [])) }}</p>
                     <p class="text-sm text-gray-400">Errors</p>
                 </div>
                 <div class="bg-slate-900/50 rounded-lg p-4">
@@ -69,18 +69,18 @@ Another Casino,United States,Nevada,Las Vegas,https://another.example.com,</pre>
                     <p class="text-sm text-gray-400">Total Rows</p>
                 </div>
                 <div class="bg-slate-900/50 rounded-lg p-4">
-                    <p class="text-2xl font-bold text-amber-400">{{ session('imported', 0) + count(session('errors', [])) }}</p>
+                    <p class="text-2xl font-bold text-amber-400">{{ session('imported', 0) + count(session('import_errors', [])) }}</p>
                     <p class="text-sm text-gray-400">Processed</p>
                 </div>
             </div>
 
-            @if(count(session('errors', [])) > 0)
+            @if(count(session('import_errors', [])) > 0)
                 <div class="mt-4">
                     <button type="button" id="toggle-errors" class="text-amber-400 hover:text-amber-300 font-medium text-sm mb-2">
-                        Show {{ count(session('errors')) }} error(s) ▼
+                        Show {{ count(session('import_errors', [])) }} error(s) ▼
                     </button>
                     <div id="errors-list" class="hidden space-y-3 max-h-96 overflow-y-auto">
-                        @foreach(session('errors') as $error)
+                        @foreach(session('import_errors', []) as $error)
                             <div class="bg-slate-900/50 border border-red-500/30 rounded-lg p-4">
                                 <p class="font-semibold text-red-400 mb-1">Row {{ $error['row'] }}</p>
                                 <p class="text-gray-400 text-sm mb-2">{{ implode(' ', $error['messages']) }}</p>
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
             errorsList.classList.toggle('hidden', !isHidden);
             toggleErrors.textContent = isHidden
                 ? 'Hide errors ▲'
-                : 'Show {{ count(session('errors', [])) }} error(s) ▼';
+                : 'Show {{ count(session('import_errors', [])) }} error(s) ▼';
         });
     }
 

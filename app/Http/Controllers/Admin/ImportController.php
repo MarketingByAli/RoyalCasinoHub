@@ -152,7 +152,7 @@ class ImportController extends Controller
         return back()->with([
             'import_success' => true,
             'imported' => $imported,
-            'errors' => $errors,
+            'import_errors' => $errors,
             'total_rows' => $rowNumber - 1,
         ]);
     }
