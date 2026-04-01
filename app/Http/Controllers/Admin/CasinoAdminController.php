@@ -28,10 +28,33 @@ class CasinoAdminController extends Controller
             $search = str_replace(['%', '_'], ['\\%', '\\_'], substr($request->search, 0, 255));
             $query->where('name', 'like', '%'.$search.'%');
         }
+        if ($request->filled('country_slug')) {
+            $query->where('country_slug', $request->country_slug);
+        }
 
         $casinos = $query->latest()->paginate(25);
 
-        return view('admin.casinos.index', compact('casinos'));
+        $stats = [
+            'total' => Casino::count(),
+            'by_status' => Casino::query()
+                ->selectRaw('status, COUNT(*) as n')
+                ->groupBy('status')
+                ->pluck('n', 'status'),
+            'with_website' => Casino::query()->whereNotNull('website')->where('website', '!=', '')->count(),
+            'claimed' => Casino::query()->where('is_claimed', true)->count(),
+            'pending_user_submissions' => Casino::query()
+                ->where('status', 'pending')
+                ->whereNotNull('submitted_by_user_id')
+                ->count(),
+            'by_country' => Casino::query()
+                ->selectRaw('country, country_slug, COUNT(*) as n')
+                ->groupBy('country', 'country_slug')
+                ->orderByDesc('n')
+                ->orderBy('country')
+                ->get(),
+        ];
+
+        return view('admin.casinos.index', compact('casinos', 'stats'));
     }
 
     public function create()
