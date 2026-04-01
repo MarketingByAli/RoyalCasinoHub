@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -76,6 +78,33 @@ class Casino extends Model
         'min_deposit' => 'decimal:2',
         'profile_completeness' => 'integer',
     ];
+
+    /**
+     * @return Attribute<string, string>
+     */
+    protected function name(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): string {
+                if ($value === null || $value === '') {
+                    return '';
+                }
+
+                return Str::title($value);
+            },
+            set: function (?string $value): array {
+                if ($value === null) {
+                    return ['name' => ''];
+                }
+                $trimmed = trim($value);
+                if ($trimmed === '') {
+                    return ['name' => ''];
+                }
+
+                return ['name' => Str::title($trimmed)];
+            },
+        );
+    }
 
     public function reviews(): HasMany
     {
