@@ -7,8 +7,11 @@ use App\Models\Casino;
 use App\Models\CasinoOffer;
 use App\Models\Tag;
 use App\Services\ActivityLogger;
+use App\Services\CasinoIntakeService;
 use App\Services\EnrichmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CasinoAdminController extends Controller
 {
@@ -30,6 +33,86 @@ class CasinoAdminController extends Controller
         $casinos = $query->latest()->paginate(25);
 
         return view('admin.casinos.index', compact('casinos'));
+    }
+
+    public function create()
+    {
+        return view('admin.casinos.create');
+    }
+
+    public function store(Request $request, CasinoIntakeService $intake, EnrichmentService $enrichmentService)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'country' => 'required|string|max:255',
+            'website' => 'nullable|string|max:500',
+            'region' => 'nullable|string|max:255',
+            'locality' => 'nullable|string|max:255',
+            'linkedin' => 'nullable|string|max:500',
+            'founded' => 'nullable|string|max:32',
+            'status' => 'required|in:published,draft,pending',
+        ]);
+
+        $website = ! empty($validated['website']) ? $intake->normalizeImportUrl(trim($validated['website'])) : null;
+        $linkedin = ! empty($validated['linkedin']) ? $intake->normalizeImportUrl(trim($validated['linkedin'])) : null;
+        $region = isset($validated['region']) && trim($validated['region']) !== '' ? trim($validated['region']) : null;
+        $locality = isset($validated['locality']) && trim($validated['locality']) !== '' ? trim($validated['locality']) : null;
+
+        $foundedParsed = $intake->parseFoundedYearString(isset($validated['founded']) ? trim($validated['founded']) : null);
+        if ($foundedParsed['error'] !== null) {
+            return back()->withInput()->withErrors(['founded' => $foundedParsed['error']]);
+        }
+
+        $urlValidator = Validator::make(
+            [
+                'website' => $website,
+                'linkedin' => $linkedin,
+            ],
+            [
+                'website' => 'nullable|url|max:500',
+                'linkedin' => 'nullable|url|max:500',
+            ],
+            [
+                'website.url' => 'Website must be a valid URL.',
+                'linkedin.url' => 'LinkedIn must be a valid URL.',
+            ]
+        );
+        if ($urlValidator->fails()) {
+            return back()->withInput()->withErrors($urlValidator);
+        }
+
+        $dup = $intake->duplicateRowMessage($website, $validated['name'], $validated['country']);
+        if ($dup !== null) {
+            return back()->withInput()->withErrors(['name' => $dup]);
+        }
+
+        $slug = $intake->uniqueSlugForName($validated['name']);
+        $status = $validated['status'];
+
+        $casino = Casino::create([
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'country' => $validated['country'],
+            'country_slug' => Str::slug($validated['country']),
+            'region' => $region,
+            'locality' => $locality,
+            'website' => $website,
+            'social_links' => Casino::mergeSocialLinks(null, $linkedin),
+            'established_year' => $foundedParsed['year'],
+        ]);
+        $casino->status = $status;
+        $casino->submitted_by_user_id = null;
+        $casino->listing_fee_paid_at = now();
+        $casino->enrichment_status = 'pending';
+        $casino->save();
+
+        if ($status === 'published') {
+            $enrichmentService->createEnrichmentJobs($casino);
+        }
+
+        ActivityLogger::log('casino.created', $casino);
+
+        return redirect()->route('admin.casinos.edit', $casino)->with('success', 'Casino created.');
     }
 
     public function edit(Casino $casino)

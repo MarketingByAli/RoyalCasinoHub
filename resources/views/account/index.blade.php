@@ -21,6 +21,12 @@
             <h2 class="font-semibold text-white mb-1">My claims</h2>
             <p class="text-sm text-gray-500">Listing claim status</p>
         </a>
+        @can('create', App\Models\Casino::class)
+            <a href="{{ route('account.submitted-listings') }}" class="block bg-slate-900/60 border border-amber-900/20 rounded-xl p-6 hover:border-amber-500/30 transition-colors">
+                <h2 class="font-semibold text-white mb-1">Submitted listings</h2>
+                <p class="text-sm text-gray-500">Pending and approved proposals</p>
+            </a>
+        @endcan
         @if(auth()->user()->role === 'casino_owner')
             <a href="{{ route('casino-owner.index') }}" class="block bg-slate-900/60 border border-amber-900/20 rounded-xl p-6 hover:border-amber-500/30 transition-colors">
                 <h2 class="font-semibold text-white mb-1">My listings</h2>

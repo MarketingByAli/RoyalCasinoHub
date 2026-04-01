@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Casino;
+use App\Services\CasinoIntakeService;
 use App\Services\EnrichmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class ImportController extends Controller
         return view('admin.import.index');
     }
 
-    public function store(Request $request, EnrichmentService $enrichmentService)
+    public function store(Request $request, EnrichmentService $enrichmentService, CasinoIntakeService $intake)
     {
         $request->validate([
             'csv' => 'required|file|mimes:csv,txt|max:10240',
@@ -61,13 +62,13 @@ class ImportController extends Controller
             $name = trim($row[$nameIndex] ?? '');
             $country = trim($row[$countryIndex] ?? '');
             $website = isset($row[$websiteIndex]) ? trim($row[$websiteIndex]) : null;
-            $website = $website === '' ? null : $this->normalizeImportUrl($website);
+            $website = $website === '' ? null : $intake->normalizeImportUrl($website);
             $region = $this->csvCell($row, $regionIndex);
             $locality = $this->csvCell($row, $localityIndex);
             $linkedin = $this->csvCell($row, $linkedinIndex);
-            $linkedin = $linkedin !== null ? $this->normalizeImportUrl($linkedin) : null;
+            $linkedin = $linkedin !== null ? $intake->normalizeImportUrl($linkedin) : null;
 
-            $foundedParsed = $this->parseFoundedYearString($this->csvCell($row, $foundedIndex));
+            $foundedParsed = $intake->parseFoundedYearString($this->csvCell($row, $foundedIndex));
             if ($foundedParsed['error'] !== null) {
                 $errors[] = [
                     'row' => $rowNumber,
@@ -116,7 +117,7 @@ class ImportController extends Controller
                 continue;
             }
 
-            $dupMsg = $this->duplicateRowMessage($website, $name, $country);
+            $dupMsg = $intake->duplicateRowMessage($website, $name, $country);
             if ($dupMsg !== null) {
                 $errors[] = [
                     'row' => $rowNumber,
@@ -128,12 +129,7 @@ class ImportController extends Controller
             }
 
             try {
-                $slug = Str::slug($name);
-                $baseSlug = $slug ?: 'casino';
-                $counter = 1;
-                while (Casino::where('slug', $slug)->exists()) {
-                    $slug = $baseSlug.'-'.$counter++;
-                }
+                $slug = $intake->uniqueSlugForName($name);
 
                 $casino = Casino::create([
                     'name' => $name,
@@ -172,7 +168,7 @@ class ImportController extends Controller
         ]);
     }
 
-    public function storeBatch(Request $request, EnrichmentService $enrichmentService): JsonResponse
+    public function storeBatch(Request $request, EnrichmentService $enrichmentService, CasinoIntakeService $intake): JsonResponse
     {
         $validated = $request->validate([
             'rows' => 'required|array|max:500',
@@ -195,16 +191,16 @@ class ImportController extends Controller
             $rowNumber = $rowOffset + $index + 1;
             $name = trim($row['name'] ?? '');
             $country = trim($row['country'] ?? '');
-            $website = ! empty($row['website']) ? $this->normalizeImportUrl(trim($row['website'])) : null;
+            $website = ! empty($row['website']) ? $intake->normalizeImportUrl(trim($row['website'])) : null;
             $region = isset($row['region']) ? trim($row['region']) : '';
             $region = $region === '' ? null : $region;
             $locality = isset($row['locality']) ? trim($row['locality']) : '';
             $locality = $locality === '' ? null : $locality;
-            $linkedin = ! empty($row['linkedin']) ? $this->normalizeImportUrl(trim($row['linkedin'])) : null;
+            $linkedin = ! empty($row['linkedin']) ? $intake->normalizeImportUrl(trim($row['linkedin'])) : null;
 
             $foundedRaw = $row['founded'] ?? $row['established_year'] ?? null;
             $foundedRaw = $foundedRaw !== null && trim((string) $foundedRaw) !== '' ? trim((string) $foundedRaw) : null;
-            $foundedParsed = $this->parseFoundedYearString($foundedRaw);
+            $foundedParsed = $intake->parseFoundedYearString($foundedRaw);
             if ($foundedParsed['error'] !== null) {
                 $errors[] = [
                     'row' => $rowNumber,
@@ -249,7 +245,7 @@ class ImportController extends Controller
                 continue;
             }
 
-            $dupMsg = $this->duplicateRowMessage($website, $name, $country);
+            $dupMsg = $intake->duplicateRowMessage($website, $name, $country);
             if ($dupMsg !== null) {
                 $errors[] = [
                     'row' => $rowNumber,
@@ -261,12 +257,7 @@ class ImportController extends Controller
             }
 
             try {
-                $slug = Str::slug($name);
-                $baseSlug = $slug ?: 'casino';
-                $counter = 1;
-                while (Casino::where('slug', $slug)->exists()) {
-                    $slug = $baseSlug.'-'.$counter++;
-                }
+                $slug = $intake->uniqueSlugForName($name);
 
                 $casino = Casino::create([
                     'name' => $name,
@@ -332,29 +323,6 @@ class ImportController extends Controller
     }
 
     /**
-     * @return array{year: ?int, error: ?string, raw: ?string}
-     */
-    private function parseFoundedYearString(?string $raw): array
-    {
-        if ($raw === null) {
-            return ['year' => null, 'error' => null, 'raw' => null];
-        }
-        $raw = trim($raw);
-        if ($raw === '') {
-            return ['year' => null, 'error' => null, 'raw' => null];
-        }
-        if (! is_numeric($raw)) {
-            return ['year' => null, 'error' => 'Founded must be a valid year.', 'raw' => $raw];
-        }
-        $y = (int) round((float) str_replace([',', ' ', "\xc2\xa0"], '', $raw));
-        if ($y < 1900 || $y > 2100) {
-            return ['year' => null, 'error' => 'Founded must be between 1900 and 2100.', 'raw' => $raw];
-        }
-
-        return ['year' => $y, 'error' => null, 'raw' => $raw];
-    }
-
-    /**
      * @param  array<int, string>  $row
      */
     private function csvCell(array $row, int|false $index): ?string
@@ -388,69 +356,5 @@ class ImportController extends Controller
             'linkedin' => $linkedin,
             'founded' => $founded,
         ];
-    }
-
-    private function duplicateRowMessage(?string $website, string $name, string $country): ?string
-    {
-        $countrySlug = Str::slug($country);
-
-        if ($website) {
-            $host = $this->normalizedHost($website);
-            if ($host) {
-                $exists = Casino::query()->whereNotNull('website')->get()
-                    ->contains(fn ($c) => $this->normalizedHost((string) $c->website) === $host);
-                if ($exists) {
-                    return 'A casino with this website domain may already exist.';
-                }
-            }
-        }
-
-        if (Casino::query()->where('country_slug', $countrySlug)->where(function ($q) use ($name) {
-            $q->whereRaw('LOWER(name) = ?', [mb_strtolower($name)]);
-        })->exists()) {
-            return 'Possible duplicate casino name for this country.';
-        }
-
-        return null;
-    }
-
-    /**
-     * Bare domains (e.g. example.com) fail Laravel's url rule; store as absolute https URL.
-     */
-    private function normalizeImportUrl(string $value): ?string
-    {
-        $value = trim($value);
-        if ($value === '') {
-            return null;
-        }
-        if (Str::startsWith($value, ['http://', 'https://'])) {
-            return $value;
-        }
-        if (Str::startsWith($value, '//')) {
-            return 'https:'.$value;
-        }
-
-        return 'https://'.$value;
-    }
-
-    private function normalizedHost(?string $url): ?string
-    {
-        if (! $url) {
-            return null;
-        }
-        $url = trim($url);
-        if (! Str::startsWith($url, ['http://', 'https://'])) {
-            $url = 'https://'.$url;
-        }
-        $host = parse_url($url, PHP_URL_HOST);
-        if (! $host) {
-            return null;
-        }
-        $host = strtolower($host);
-        if (Str::startsWith($host, 'www.')) {
-            $host = substr($host, 4);
-        }
-
-        return $host;
     }
 }

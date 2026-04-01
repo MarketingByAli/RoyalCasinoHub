@@ -60,6 +60,8 @@ class Casino extends Model
         'canonical_url',
         'robots',
         'news_last_fetched_at',
+        'submitted_by_user_id',
+        'listing_fee_paid_at',
     ];
 
     protected $casts = [
@@ -77,6 +79,7 @@ class Casino extends Model
         'website_link_broken' => 'boolean',
         'min_deposit' => 'decimal:2',
         'profile_completeness' => 'integer',
+        'listing_fee_paid_at' => 'datetime',
     ];
 
     /**
@@ -225,6 +228,11 @@ class Casino extends Model
     public function claimedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'claimed_by_user_id');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by_user_id');
     }
 
     public function claimedListings(): HasMany

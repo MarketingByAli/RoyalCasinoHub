@@ -61,6 +61,11 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         return $this->hasMany(Casino::class, 'claimed_by_user_id');
     }
 
+    public function submittedCasinos(): HasMany
+    {
+        return $this->hasMany(Casino::class, 'submitted_by_user_id');
+    }
+
     public function favoriteCasinos(): BelongsToMany
     {
         return $this->belongsToMany(Casino::class, 'user_casino_favorites')->withTimestamps();

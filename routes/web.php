@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\CasinoController;
+use App\Http\Controllers\CasinoListingSubmissionController;
 use App\Http\Controllers\CasinoOwnerController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\CasinoReportAdminController;
@@ -48,6 +49,7 @@ Route::get('/robots.txt', function () {
         '/forgot-password',
         '/reset-password',
         '/verify-email',
+        '/submit-listing',
     ];
     $lines = ['User-agent: *'];
     foreach ($disallow as $path) {
@@ -105,6 +107,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::middleware('verified')->prefix('account')->name('account.')->group(function () {
         Route::get('/', [AccountController::class, 'index'])->name('index');
+        Route::get('/submitted-listings', [AccountController::class, 'submittedListings'])->name('submitted-listings');
         Route::get('/profile', [AccountController::class, 'editProfile'])->name('profile.edit');
         Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
         Route::put('/password', [AccountController::class, 'updatePassword'])->name('password.update');
@@ -122,6 +125,12 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/casinos/{casino}/report', [CasinoReportPublicController::class, 'store'])
         ->middleware(['throttle:10,1', 'verified'])
         ->name('casinos.report');
+
+    Route::get('/submit-listing', [CasinoListingSubmissionController::class, 'create'])
+        ->name('casino-listings.create');
+    Route::post('/submit-listing', [CasinoListingSubmissionController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('casino-listings.store');
 });
 
 Route::middleware('guest')->group(function () {
@@ -152,6 +161,8 @@ Route::middleware(['auth', 'admin', 'active'])->prefix('admin')->name('admin.')-
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');
     Route::put('/users/{user}', [UserAdminController::class, 'update'])->name('users.update');
     Route::get('/casinos', [CasinoAdminController::class, 'index'])->name('casinos.index');
+    Route::get('/casinos/create', [CasinoAdminController::class, 'create'])->name('casinos.create');
+    Route::post('/casinos', [CasinoAdminController::class, 'store'])->name('casinos.store');
     Route::get('/casinos/{casino}/edit', [CasinoAdminController::class, 'edit'])->name('casinos.edit');
     Route::put('/casinos/{casino}', [CasinoAdminController::class, 'update'])->name('casinos.update');
     Route::post('/casinos/{casino}/toggle-status', [CasinoAdminController::class, 'toggleStatus'])->name('casinos.toggle-status');

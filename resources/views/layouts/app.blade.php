@@ -57,6 +57,9 @@
                     <a href="{{ route('blog.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Blog</a>
                     <a href="{{ route('reviews.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Reviews</a>
                     @auth
+                        @can('create', App\Models\Casino::class)
+                            <a href="{{ route('casino-listings.create') }}" class="text-gray-400 hover:text-amber-400 text-sm font-medium">Add casino</a>
+                        @endcan
                         <a href="{{ route('account.index') }}" class="text-gray-400 hover:text-amber-400 text-sm font-medium">Account</a>
                         @if(auth()->user()->role === 'admin')
                             <a href="{{ route('admin.dashboard') }}" class="text-amber-400 hover:text-amber-300 text-sm font-medium">Admin</a>
@@ -98,6 +101,9 @@
                 <a href="{{ route('blog.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Blog</a>
                 <a href="{{ route('reviews.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Reviews</a>
                 @auth
+                    @can('create', App\Models\Casino::class)
+                        <a href="{{ route('casino-listings.create') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Add casino</a>
+                    @endcan
                     <a href="{{ route('account.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Account</a>
                     @if(auth()->user()->role === 'admin')
                         <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2.5 rounded-lg text-amber-400 hover:bg-amber-500/10 transition-all">Admin</a>

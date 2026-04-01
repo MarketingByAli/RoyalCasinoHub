@@ -3,6 +3,7 @@
 @section('content')
 <div class="flex justify-between items-center mb-8">
     <h1 class="text-2xl font-bold text-amber-400">Casinos</h1>
+    <a href="{{ route('admin.casinos.create') }}" class="bg-amber-500 hover:bg-amber-600 text-amber-950 font-semibold px-4 py-2 rounded-lg text-sm">Add casino</a>
 </div>
 
 <form method="GET" class="flex gap-4 mb-6">
@@ -11,6 +12,7 @@
         <option value="">All Status</option>
         <option value="published" {{ request('status') === 'published' ? 'selected' : '' }}>Published</option>
         <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draft</option>
+        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
     </select>
     <select name="enrichment" class="bg-slate-800/50 border border-amber-900/30 rounded-lg px-4 py-2">
         <option value="">All Enrichment</option>

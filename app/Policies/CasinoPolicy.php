@@ -7,6 +7,11 @@ use App\Models\User;
 
 class CasinoPolicy
 {
+    public function create(User $user): bool
+    {
+        return $user->hasVerifiedEmail() && $user->is_active !== false;
+    }
+
     public function report(User $user, Casino $casino): bool
     {
         return $user->hasVerifiedEmail() && $user->is_active !== false;

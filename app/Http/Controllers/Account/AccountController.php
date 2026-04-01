@@ -21,6 +21,18 @@ class AccountController extends Controller
         ]);
     }
 
+    public function submittedListings()
+    {
+        $casinos = Auth::user()->submittedCasinos()->latest()->paginate(15);
+
+        return view('account.submitted-listings', [
+            'casinos' => $casinos,
+            'meta_title' => 'Submitted listings | RoyalCasinoHub',
+            'meta_description' => 'Casino listings you have submitted.',
+            'noindex' => true,
+        ]);
+    }
+
     public function updateSettings(Request $request)
     {
         $settings = array_merge($request->user()->settings ?? [], [
