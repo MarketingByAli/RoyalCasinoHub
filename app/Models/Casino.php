@@ -106,6 +106,87 @@ class Casino extends Model
         );
     }
 
+    /**
+     * @return Attribute<string, string>
+     */
+    protected function country(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): string {
+                if ($value === null || $value === '') {
+                    return '';
+                }
+
+                return Str::title($value);
+            },
+            set: function (?string $value): array {
+                if ($value === null) {
+                    return ['country' => ''];
+                }
+                $trimmed = trim($value);
+                if ($trimmed === '') {
+                    return ['country' => ''];
+                }
+
+                return ['country' => Str::title($trimmed)];
+            },
+        );
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function region(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): ?string {
+                if ($value === null || trim((string) $value) === '') {
+                    return null;
+                }
+
+                return Str::title(trim($value));
+            },
+            set: function (?string $value): array {
+                if ($value === null) {
+                    return ['region' => null];
+                }
+                $trimmed = trim($value);
+                if ($trimmed === '') {
+                    return ['region' => null];
+                }
+
+                return ['region' => Str::title($trimmed)];
+            },
+        );
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function locality(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): ?string {
+                if ($value === null || trim((string) $value) === '') {
+                    return null;
+                }
+
+                return Str::title(trim($value));
+            },
+            set: function (?string $value): array {
+                if ($value === null) {
+                    return ['locality' => null];
+                }
+                $trimmed = trim($value);
+                if ($trimmed === '') {
+                    return ['locality' => null];
+                }
+
+                return ['locality' => Str::title($trimmed)];
+            },
+        );
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
