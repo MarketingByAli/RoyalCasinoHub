@@ -125,8 +125,8 @@
         </div>
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm text-gray-400 mb-1">Established year</label>
-                <input type="number" name="established_year" value="{{ old('established_year', $casino->established_year) }}" min="1900" max="2100" class="w-full bg-slate-800/50 border border-amber-900/30 rounded-lg px-4 py-2">
+                <label class="block text-sm text-gray-400 mb-1">Founded (year)</label>
+                <input type="number" name="established_year" value="{{ old('established_year', $casino->established_year) }}" min="1900" max="2100" placeholder="e.g. 2021" class="w-full bg-slate-800/50 border border-amber-900/30 rounded-lg px-4 py-2">
             </div>
             <div>
                 <label class="block text-sm text-gray-400 mb-1">Last verified</label>

@@ -44,6 +44,7 @@ class ImportController extends Controller
         $regionIndex = array_search('region', $header);
         $localityIndex = array_search('locality', $header);
         $linkedinIndex = $this->linkedinColumnIndex($header);
+        $foundedIndex = $this->foundedColumnIndex($header);
 
         if ($nameIndex === false || $countryIndex === false) {
             fclose($handle);
@@ -65,6 +66,18 @@ class ImportController extends Controller
             $locality = $this->csvCell($row, $localityIndex);
             $linkedin = $this->csvCell($row, $linkedinIndex);
             $linkedin = $linkedin !== null ? $this->normalizeImportUrl($linkedin) : null;
+
+            $foundedParsed = $this->parseFoundedYearString($this->csvCell($row, $foundedIndex));
+            if ($foundedParsed['error'] !== null) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
+                    'messages' => [$foundedParsed['error']],
+                ];
+
+                continue;
+            }
+            $establishedYear = $foundedParsed['year'];
 
             $validator = Validator::make(
                 [
@@ -96,7 +109,7 @@ class ImportController extends Controller
             if ($validator->fails()) {
                 $errors[] = [
                     'row' => $rowNumber,
-                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin),
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
                     'messages' => $validator->errors()->all(),
                 ];
 
@@ -107,7 +120,7 @@ class ImportController extends Controller
             if ($dupMsg !== null) {
                 $errors[] = [
                     'row' => $rowNumber,
-                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin),
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
                     'messages' => [$dupMsg],
                 ];
 
@@ -131,8 +144,9 @@ class ImportController extends Controller
                     'locality' => $locality,
                     'website' => $website,
                     'social_links' => Casino::mergeSocialLinks(null, $linkedin),
+                    'established_year' => $establishedYear,
                 ]);
-                $casino->status = 'draft';
+                $casino->status = 'published';
                 $casino->enrichment_status = 'pending';
                 $casino->save();
 
@@ -142,7 +156,7 @@ class ImportController extends Controller
                 report($e);
                 $errors[] = [
                     'row' => $rowNumber,
-                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin),
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
                     'messages' => ['Failed to import this row. Please check the data and try again.'],
                 ];
             }
@@ -168,6 +182,8 @@ class ImportController extends Controller
             'rows.*.region' => 'nullable|string|max:255',
             'rows.*.locality' => 'nullable|string|max:255',
             'rows.*.linkedin' => 'nullable|string|max:500',
+            'rows.*.founded' => 'nullable|string|max:32',
+            'rows.*.established_year' => 'nullable|string|max:32',
             'row_offset' => 'required|integer|min:0',
         ]);
 
@@ -185,6 +201,20 @@ class ImportController extends Controller
             $locality = isset($row['locality']) ? trim($row['locality']) : '';
             $locality = $locality === '' ? null : $locality;
             $linkedin = ! empty($row['linkedin']) ? $this->normalizeImportUrl(trim($row['linkedin'])) : null;
+
+            $foundedRaw = $row['founded'] ?? $row['established_year'] ?? null;
+            $foundedRaw = $foundedRaw !== null && trim((string) $foundedRaw) !== '' ? trim((string) $foundedRaw) : null;
+            $foundedParsed = $this->parseFoundedYearString($foundedRaw);
+            if ($foundedParsed['error'] !== null) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
+                    'messages' => [$foundedParsed['error']],
+                ];
+
+                continue;
+            }
+            $establishedYear = $foundedParsed['year'];
 
             $validator = Validator::make(
                 [
@@ -212,7 +242,7 @@ class ImportController extends Controller
             if ($validator->fails()) {
                 $errors[] = [
                     'row' => $rowNumber,
-                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin),
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
                     'messages' => $validator->errors()->all(),
                 ];
 
@@ -223,7 +253,7 @@ class ImportController extends Controller
             if ($dupMsg !== null) {
                 $errors[] = [
                     'row' => $rowNumber,
-                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin),
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
                     'messages' => [$dupMsg],
                 ];
 
@@ -247,8 +277,9 @@ class ImportController extends Controller
                     'locality' => $locality,
                     'website' => $website,
                     'social_links' => Casino::mergeSocialLinks(null, $linkedin),
+                    'established_year' => $establishedYear,
                 ]);
-                $casino->status = 'draft';
+                $casino->status = 'published';
                 $casino->enrichment_status = 'pending';
                 $casino->save();
 
@@ -258,7 +289,7 @@ class ImportController extends Controller
                 report($e);
                 $errors[] = [
                     'row' => $rowNumber,
-                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin),
+                    'data' => $this->importErrorData($name, $country, $website, $region, $locality, $linkedin, $foundedParsed['raw']),
                     'messages' => ['Failed to import this row. Please check the data and try again.'],
                 ];
             }
@@ -286,6 +317,44 @@ class ImportController extends Controller
     }
 
     /**
+     * @param  array<int, string>  $header
+     */
+    private function foundedColumnIndex(array $header): int|false
+    {
+        foreach (['founded', 'established_year', 'year_founded'] as $col) {
+            $i = array_search($col, $header, true);
+            if ($i !== false) {
+                return $i;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array{year: ?int, error: ?string, raw: ?string}
+     */
+    private function parseFoundedYearString(?string $raw): array
+    {
+        if ($raw === null) {
+            return ['year' => null, 'error' => null, 'raw' => null];
+        }
+        $raw = trim($raw);
+        if ($raw === '') {
+            return ['year' => null, 'error' => null, 'raw' => null];
+        }
+        if (! is_numeric($raw)) {
+            return ['year' => null, 'error' => 'Founded must be a valid year.', 'raw' => $raw];
+        }
+        $y = (int) round((float) str_replace([',', ' ', "\xc2\xa0"], '', $raw));
+        if ($y < 1900 || $y > 2100) {
+            return ['year' => null, 'error' => 'Founded must be between 1900 and 2100.', 'raw' => $raw];
+        }
+
+        return ['year' => $y, 'error' => null, 'raw' => $raw];
+    }
+
+    /**
      * @param  array<int, string>  $row
      */
     private function csvCell(array $row, int|false $index): ?string
@@ -299,7 +368,7 @@ class ImportController extends Controller
     }
 
     /**
-     * @return array{name: string, country: string, website: ?string, region: ?string, locality: ?string, linkedin: ?string}
+     * @return array{name: string, country: string, website: ?string, region: ?string, locality: ?string, linkedin: ?string, founded: ?string}
      */
     private function importErrorData(
         string $name,
@@ -307,7 +376,8 @@ class ImportController extends Controller
         ?string $website,
         ?string $region,
         ?string $locality,
-        ?string $linkedin
+        ?string $linkedin,
+        ?string $founded = null,
     ): array {
         return [
             'name' => $name,
@@ -316,6 +386,7 @@ class ImportController extends Controller
             'region' => $region,
             'locality' => $locality,
             'linkedin' => $linkedin,
+            'founded' => $founded,
         ];
     }
 

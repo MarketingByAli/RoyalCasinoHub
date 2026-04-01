@@ -8,15 +8,15 @@
         <h2 class="text-lg font-semibold text-white mb-4">Import Instructions</h2>
         <ul class="text-gray-400 space-y-2 text-sm mb-4">
             <li>• <strong class="text-amber-400">Required columns:</strong> <code class="bg-slate-900 px-1 rounded">name</code>, <code class="bg-slate-900 px-1 rounded">country</code></li>
-            <li>• <strong class="text-amber-400">Optional columns:</strong> <code class="bg-slate-900 px-1 rounded">website</code>, <code class="bg-slate-900 px-1 rounded">region</code>, <code class="bg-slate-900 px-1 rounded">locality</code>, <code class="bg-slate-900 px-1 rounded">linkedin</code>, <code class="bg-slate-900 px-1 rounded">linkedin_url</code>, or <code class="bg-slate-900 px-1 rounded">social_linkedin</code></li>
+            <li>• <strong class="text-amber-400">Optional columns:</strong> <code class="bg-slate-900 px-1 rounded">website</code>, <code class="bg-slate-900 px-1 rounded">region</code>, <code class="bg-slate-900 px-1 rounded">locality</code>, <code class="bg-slate-900 px-1 rounded">founded</code> (year, or <code class="bg-slate-900 px-1 rounded">established_year</code>), <code class="bg-slate-900 px-1 rounded">linkedin</code>, <code class="bg-slate-900 px-1 rounded">linkedin_url</code>, or <code class="bg-slate-900 px-1 rounded">social_linkedin</code></li>
             <li>• Website and LinkedIn may be bare domains (e.g. <code class="bg-slate-900 px-1 rounded">example.com</code>); <code class="bg-slate-900 px-1 rounded">https://</code> is added when missing. Country listings sort by region, then locality, then name.</li>
             <li>• First row must be the header. Column names are case-insensitive.</li>
             <li>• Max file size: 10 MB. Accepted formats: .csv, .txt</li>
         </ul>
         <p class="text-gray-500 text-sm">Example CSV:</p>
-        <pre class="bg-slate-900 rounded-lg p-4 mt-2 text-xs text-gray-300 overflow-x-auto">name,country,region,locality,website,linkedin
-Example Casino,United Kingdom,England,London,https://example.com,https://www.linkedin.com/company/example
-Another Casino,United States,Nevada,Las Vegas,https://another.example.com,</pre>
+        <pre class="bg-slate-900 rounded-lg p-4 mt-2 text-xs text-gray-300 overflow-x-auto">name,country,region,locality,founded,website,linkedin
+Example Casino,United Kingdom,England,London,2019,https://example.com,https://www.linkedin.com/company/example
+Another Casino,United States,Nevada,Las Vegas,2020,https://another.example.com,</pre>
     </div>
 
     <form id="import-form" action="{{ route('admin.import.store') }}" method="POST" enctype="multipart/form-data" class="mb-8">
@@ -90,7 +90,8 @@ Another Casino,United States,Nevada,Las Vegas,https://another.example.com,</pre>
                                     region: "{{ $error['data']['region'] ?? '' }}",
                                     locality: "{{ $error['data']['locality'] ?? '' }}",
                                     website: "{{ $error['data']['website'] ?? '' }}",
-                                    linkedin: "{{ $error['data']['linkedin'] ?? '' }}"
+                                    linkedin: "{{ $error['data']['linkedin'] ?? '' }}",
+                                    founded: "{{ $error['data']['founded'] ?? '' }}"
                                 </p>
                             </div>
                         @endforeach
@@ -168,6 +169,9 @@ document.addEventListener('DOMContentLoaded', function() {
         let linkedinIdx = header.indexOf('linkedin');
         if (linkedinIdx === -1) linkedinIdx = header.indexOf('linkedin_url');
         if (linkedinIdx === -1) linkedinIdx = header.indexOf('social_linkedin');
+        let foundedIdx = header.indexOf('founded');
+        if (foundedIdx === -1) foundedIdx = header.indexOf('established_year');
+        if (foundedIdx === -1) foundedIdx = header.indexOf('year_founded');
 
         if (nameIdx === -1 || countryIdx === -1) {
             progressStatus.textContent = 'CSV must have "name" and "country" columns.';
@@ -185,7 +189,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const region = regionIdx >= 0 ? (cols[regionIdx] || '').trim() : '';
             const locality = localityIdx >= 0 ? (cols[localityIdx] || '').trim() : '';
             const linkedin = linkedinIdx >= 0 ? (cols[linkedinIdx] || '').trim() : '';
-            rows.push({ name, country, website, region, locality, linkedin });
+            const founded = foundedIdx >= 0 ? (cols[foundedIdx] || '').trim() : '';
+            rows.push({ name, country, website, region, locality, linkedin, founded });
         }
 
         const BATCH_SIZE = 100;
@@ -285,7 +290,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                         region: "${esc(e.data && e.data.region)}",
                                         locality: "${esc(e.data && e.data.locality)}",
                                         website: "${esc(e.data && e.data.website)}",
-                                        linkedin: "${esc(e.data && e.data.linkedin)}"
+                                        linkedin: "${esc(e.data && e.data.linkedin)}",
+                                        founded: "${esc(e.data && e.data.founded)}"
                                     </p>
                                 </div>
                             `).join('')}
