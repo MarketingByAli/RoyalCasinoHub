@@ -18,6 +18,28 @@
             @enderror
         </div>
         <div>
+            <label class="block text-sm text-gray-400 mb-2">Account type</label>
+            <div class="space-y-2">
+                <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors {{ old('account_type', 'user') === 'user' ? 'border-amber-500/50 bg-amber-500/5' : 'border-amber-900/30 bg-slate-800/30 hover:border-amber-900/50' }}">
+                    <input type="radio" name="account_type" value="user" class="mt-1 text-amber-500" {{ old('account_type', 'user') === 'user' ? 'checked' : '' }}>
+                    <span>
+                        <span class="text-white font-medium">Player / reviewer</span>
+                        <span class="block text-xs text-gray-500 mt-0.5">Write reviews, save favorites, and claim a listing later.</span>
+                    </span>
+                </label>
+                <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors {{ old('account_type') === 'casino_owner' ? 'border-amber-500/50 bg-amber-500/5' : 'border-amber-900/30 bg-slate-800/30 hover:border-amber-900/50' }}">
+                    <input type="radio" name="account_type" value="casino_owner" class="mt-1 text-amber-500" {{ old('account_type') === 'casino_owner' ? 'checked' : '' }}>
+                    <span>
+                        <span class="text-white font-medium">Casino owner / operator</span>
+                        <span class="block text-xs text-gray-500 mt-0.5">Submit new listings for your venues and manage claimed listings after verification.</span>
+                    </span>
+                </label>
+            </div>
+            @error('account_type')
+                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+        <div>
             <label class="block text-sm text-gray-400 mb-1">Email</label>
             <input type="email" name="email" value="{{ old('email') }}" required
                 class="w-full bg-slate-800/50 border border-amber-900/30 rounded-lg px-4 py-2 text-white @error('email') border-red-500 @enderror">

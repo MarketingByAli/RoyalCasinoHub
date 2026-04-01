@@ -29,13 +29,14 @@ class RegisterController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|max:255|confirmed',
+            'account_type' => 'required|in:user,casino_owner',
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role' => 'user',
+            'role' => $validated['account_type'],
             'is_active' => true,
         ]);
 
