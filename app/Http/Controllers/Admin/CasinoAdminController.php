@@ -34,7 +34,22 @@ class CasinoAdminController extends Controller
 
         $casinos = $query->latest()->paginate(25);
 
-        $stats = [
+        return view('admin.casinos.index', compact('casinos'));
+    }
+
+    public function directoryInsights()
+    {
+        return view('admin.casino-directory', [
+            'stats' => $this->casinoDirectoryStats(),
+        ]);
+    }
+
+    /**
+     * @return array{total: int, by_status: \Illuminate\Support\Collection, with_website: int, claimed: int, pending_user_submissions: int, by_country: \Illuminate\Support\Collection}
+     */
+    private function casinoDirectoryStats(): array
+    {
+        return [
             'total' => Casino::count(),
             'by_status' => Casino::query()
                 ->selectRaw('status, COUNT(*) as n')
@@ -53,8 +68,6 @@ class CasinoAdminController extends Controller
                 ->orderBy('country')
                 ->get(),
         ];
-
-        return view('admin.casinos.index', compact('casinos', 'stats'));
     }
 
     public function create()

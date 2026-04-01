@@ -23,6 +23,7 @@
             <nav class="space-y-1">
                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.dashboard') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Dashboard</a>
                 <a href="{{ route('admin.casinos.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.casinos.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Casinos</a>
+                <a href="{{ route('admin.casino-directory') }}" class="block px-4 py-2 ml-2 text-sm rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.casino-directory') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500' }}">Directory insights</a>
                 <a href="{{ route('admin.import.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.import.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">CSV Import</a>
                 <a href="{{ route('admin.reviews.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.reviews.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Reviews</a>
                 <a href="{{ route('admin.claims.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.claims.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Claims</a>

@@ -158,6 +158,7 @@ Route::middleware(['auth', 'admin', 'active'])->prefix('admin')->name('admin.')-
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');
     Route::put('/users/{user}', [UserAdminController::class, 'update'])->name('users.update');
     Route::get('/casinos', [CasinoAdminController::class, 'index'])->name('casinos.index');
+    Route::get('/casino-directory', [CasinoAdminController::class, 'directoryInsights'])->name('casino-directory');
     Route::get('/casinos/create', [CasinoAdminController::class, 'create'])->name('casinos.create');
     Route::post('/casinos', [CasinoAdminController::class, 'store'])->name('casinos.store');
     Route::get('/casinos/{casino}/edit', [CasinoAdminController::class, 'edit'])->name('casinos.edit');
