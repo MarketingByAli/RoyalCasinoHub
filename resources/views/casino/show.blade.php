@@ -33,7 +33,15 @@
                     @php
                         $locationParts = collect([$casino->locality, $casino->region])->filter()->implode(', ');
                     @endphp
-                    <p class="text-gray-400 mt-1">{{ $casino->country }}@if($locationParts)<span class="text-gray-600"> · </span>{{ $locationParts }}@endif@if($casino->established_year)<span class="text-gray-600"> · </span><span class="text-gray-500">Founded {{ $casino->established_year }}</span>@endif</p>
+                    <p class="text-gray-400 mt-1">
+                        {{ $casino->country }}
+                        @if($locationParts)
+                            <span class="text-gray-600"> · </span>{{ $locationParts }}
+                        @endif
+                        @if($casino->established_year)
+                            <span class="text-gray-600"> · </span><span class="text-gray-500">Founded {{ $casino->established_year }}</span>
+                        @endif
+                    </p>
                     @if($casino->average_rating)
                         <div class="mt-2 flex items-center gap-2">
                             <span class="text-amber-400 text-xl">

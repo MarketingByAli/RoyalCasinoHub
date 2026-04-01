@@ -14,7 +14,15 @@
         @php
             $cardLoc = collect([$casino->locality, $casino->region])->filter()->implode(', ');
         @endphp
-        <p class="text-sm text-gray-500 mt-1">{{ $casino->country }}@if($cardLoc)<span class="text-gray-600"> · </span>{{ $cardLoc }}@endif@if($casino->established_year)<span class="text-gray-600"> · </span>Founded {{ $casino->established_year }}@endif</p>
+        <p class="text-sm text-gray-500 mt-1">
+            {{ $casino->country }}
+            @if($cardLoc)
+                <span class="text-gray-600"> · </span>{{ $cardLoc }}
+            @endif
+            @if($casino->established_year)
+                <span class="text-gray-600"> · </span>Founded {{ $casino->established_year }}
+            @endif
+        </p>
         @if($casino->average_rating)
             <div class="mt-3 flex items-center gap-1.5 text-amber-400/90">
                 <x-star-rating :rating="$casino->average_rating" />
