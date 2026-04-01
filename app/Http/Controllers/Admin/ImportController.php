@@ -60,10 +60,11 @@ class ImportController extends Controller
             $name = trim($row[$nameIndex] ?? '');
             $country = trim($row[$countryIndex] ?? '');
             $website = isset($row[$websiteIndex]) ? trim($row[$websiteIndex]) : null;
-            $website = $website === '' ? null : $website;
+            $website = $website === '' ? null : $this->normalizeImportUrl($website);
             $region = $this->csvCell($row, $regionIndex);
             $locality = $this->csvCell($row, $localityIndex);
             $linkedin = $this->csvCell($row, $linkedinIndex);
+            $linkedin = $linkedin !== null ? $this->normalizeImportUrl($linkedin) : null;
 
             $validator = Validator::make(
                 [
@@ -178,12 +179,12 @@ class ImportController extends Controller
             $rowNumber = $rowOffset + $index + 1;
             $name = trim($row['name'] ?? '');
             $country = trim($row['country'] ?? '');
-            $website = ! empty($row['website']) ? trim($row['website']) : null;
+            $website = ! empty($row['website']) ? $this->normalizeImportUrl(trim($row['website'])) : null;
             $region = isset($row['region']) ? trim($row['region']) : '';
             $region = $region === '' ? null : $region;
             $locality = isset($row['locality']) ? trim($row['locality']) : '';
             $locality = $locality === '' ? null : $locality;
-            $linkedin = ! empty($row['linkedin']) ? trim($row['linkedin']) : null;
+            $linkedin = ! empty($row['linkedin']) ? $this->normalizeImportUrl(trim($row['linkedin'])) : null;
 
             $validator = Validator::make(
                 [
@@ -274,7 +275,7 @@ class ImportController extends Controller
      */
     private function linkedinColumnIndex(array $header): int|false
     {
-        foreach (['linkedin', 'social_linkedin'] as $col) {
+        foreach (['linkedin', 'linkedin_url', 'social_linkedin'] as $col) {
             $i = array_search($col, $header, true);
             if ($i !== false) {
                 return $i;
@@ -340,6 +341,25 @@ class ImportController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Bare domains (e.g. example.com) fail Laravel's url rule; store as absolute https URL.
+     */
+    private function normalizeImportUrl(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+        if (Str::startsWith($value, ['http://', 'https://'])) {
+            return $value;
+        }
+        if (Str::startsWith($value, '//')) {
+            return 'https:'.$value;
+        }
+
+        return 'https://'.$value;
     }
 
     private function normalizedHost(?string $url): ?string

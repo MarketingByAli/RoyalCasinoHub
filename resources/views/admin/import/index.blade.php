@@ -8,8 +8,8 @@
         <h2 class="text-lg font-semibold text-white mb-4">Import Instructions</h2>
         <ul class="text-gray-400 space-y-2 text-sm mb-4">
             <li>• <strong class="text-amber-400">Required columns:</strong> <code class="bg-slate-900 px-1 rounded">name</code>, <code class="bg-slate-900 px-1 rounded">country</code></li>
-            <li>• <strong class="text-amber-400">Optional columns:</strong> <code class="bg-slate-900 px-1 rounded">website</code>, <code class="bg-slate-900 px-1 rounded">region</code>, <code class="bg-slate-900 px-1 rounded">locality</code>, <code class="bg-slate-900 px-1 rounded">linkedin</code> (or <code class="bg-slate-900 px-1 rounded">social_linkedin</code>)</li>
-            <li>• URLs must be valid when provided. Country listings sort by region, then locality, then name.</li>
+            <li>• <strong class="text-amber-400">Optional columns:</strong> <code class="bg-slate-900 px-1 rounded">website</code>, <code class="bg-slate-900 px-1 rounded">region</code>, <code class="bg-slate-900 px-1 rounded">locality</code>, <code class="bg-slate-900 px-1 rounded">linkedin</code>, <code class="bg-slate-900 px-1 rounded">linkedin_url</code>, or <code class="bg-slate-900 px-1 rounded">social_linkedin</code></li>
+            <li>• Website and LinkedIn may be bare domains (e.g. <code class="bg-slate-900 px-1 rounded">example.com</code>); <code class="bg-slate-900 px-1 rounded">https://</code> is added when missing. Country listings sort by region, then locality, then name.</li>
             <li>• First row must be the header. Column names are case-insensitive.</li>
             <li>• Max file size: 10 MB. Accepted formats: .csv, .txt</li>
         </ul>
@@ -166,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const regionIdx = header.indexOf('region');
         const localityIdx = header.indexOf('locality');
         let linkedinIdx = header.indexOf('linkedin');
+        if (linkedinIdx === -1) linkedinIdx = header.indexOf('linkedin_url');
         if (linkedinIdx === -1) linkedinIdx = header.indexOf('social_linkedin');
 
         if (nameIdx === -1 || countryIdx === -1) {
