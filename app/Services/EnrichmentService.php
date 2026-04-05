@@ -6,6 +6,7 @@ use App\Models\Casino;
 use App\Models\EnrichmentQueue;
 use Anthropic\Client;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class EnrichmentService
@@ -134,9 +135,152 @@ class EnrichmentService
         return Str::limit(trim($text), 2000) ?: null;
     }
 
-    public function getScreenshotPlaceholder(Casino $casino): string
+    /**
+     * Fetches a website screenshot when possible, stores it on the public disk,
+     * or applies the configured default image when there is no website or capture fails.
+     */
+    public function captureScreenshotForCasino(Casino $casino): string
     {
-        return "https://via.placeholder.com/1200x630/0f0f1a/D4AF37?text=" . urlencode($casino->name);
+        $casino->refresh();
+
+        $defaultUrl = config('casinos.default_screenshot_url');
+        $defaultUrl = is_string($defaultUrl) && trim($defaultUrl) !== '' ? trim($defaultUrl) : null;
+
+        if ($this->shouldSkipScreenshotFetch($casino)) {
+            return 'Screenshot unchanged (already set manually or from a previous capture)';
+        }
+
+        if (! $this->normalizeHttpUrl($casino->website)) {
+            if ($defaultUrl !== null) {
+                $casino->update([
+                    'screenshot_url' => $defaultUrl,
+                    'screenshot_alt' => $casino->name,
+                ]);
+
+                return 'Applied default screenshot (no website URL)';
+            }
+
+            return 'No website; DEFAULT_CASINO_SCREENSHOT_URL not configured';
+        }
+
+        $storedUrl = $this->downloadWebsiteScreenshot($casino);
+        if ($storedUrl !== null) {
+            $casino->update([
+                'screenshot_url' => $storedUrl,
+                'screenshot_alt' => $casino->name.' website preview',
+            ]);
+
+            return 'Screenshot captured from website and stored';
+        }
+
+        if ($defaultUrl !== null) {
+            $casino->update([
+                'screenshot_url' => $defaultUrl,
+                'screenshot_alt' => $casino->name,
+            ]);
+
+            return 'Screenshot capture failed; applied default image URL';
+        }
+
+        return 'Screenshot capture failed; no default image URL configured';
+    }
+
+    private function shouldSkipScreenshotFetch(Casino $casino): bool
+    {
+        $url = $casino->screenshot_url;
+        if ($url === null || trim((string) $url) === '') {
+            return false;
+        }
+
+        return ! str_contains(strtolower((string) $url), 'via.placeholder.com');
+    }
+
+    private function normalizeHttpUrl(?string $url): ?string
+    {
+        if ($url === null || trim($url) === '') {
+            return null;
+        }
+        $trim = trim($url);
+        if (! filter_var($trim, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+        $scheme = strtolower((string) parse_url($trim, PHP_URL_SCHEME));
+
+        return in_array($scheme, ['http', 'https'], true) ? $trim : null;
+    }
+
+    private function downloadWebsiteScreenshot(Casino $casino): ?string
+    {
+        $driver = config('casinos.screenshot.driver', 'microlink');
+        if ($driver !== 'microlink') {
+            return null;
+        }
+
+        $website = $this->normalizeHttpUrl($casino->website);
+        if ($website === null) {
+            return null;
+        }
+
+        $request = Http::timeout(120)->connectTimeout(20)->acceptJson();
+        $token = config('casinos.screenshot.microlink_api_key');
+        if (is_string($token) && trim($token) !== '') {
+            $request = $request->withToken(trim($token));
+        }
+
+        $response = $request->get('https://api.microlink.io', [
+            'url' => $website,
+            'screenshot' => 'true',
+            'meta' => 'false',
+        ]);
+
+        if (! $response->successful()) {
+            report(new \RuntimeException('Microlink screenshot failed: HTTP '.$response->status()));
+
+            return null;
+        }
+
+        $screenshotUrl = data_get($response->json(), 'data.screenshot.url');
+        if (! is_string($screenshotUrl) || ! filter_var($screenshotUrl, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        $image = Http::timeout(90)->connectTimeout(15)->get($screenshotUrl);
+        if (! $image->successful()) {
+            return null;
+        }
+
+        $body = $image->body();
+        if (strlen($body) < 400) {
+            return null;
+        }
+
+        $mimeType = strtolower((string) $image->header('Content-Type'));
+        $ext = 'jpg';
+        if (str_contains($mimeType, 'png')) {
+            $ext = 'png';
+        } elseif (str_contains($mimeType, 'webp')) {
+            $ext = 'webp';
+        } else {
+            $apiType = strtolower((string) data_get($response->json(), 'data.screenshot.type', ''));
+            if ($apiType === 'png') {
+                $ext = 'png';
+            } elseif ($apiType === 'webp') {
+                $ext = 'webp';
+            }
+        }
+
+        $disk = Storage::disk('public');
+        foreach (['jpg', 'jpeg', 'png', 'webp'] as $oldExt) {
+            $oldPath = 'casino-screenshots/'.$casino->id.'.'.$oldExt;
+            if ($disk->exists($oldPath)) {
+                $disk->delete($oldPath);
+            }
+        }
+
+        $path = 'casino-screenshots/'.$casino->id.'.'.$ext;
+        Storage::disk('public')->put($path, $body);
+
+        return Storage::disk('public')->url($path);
     }
 
     public function createEnrichmentJobs(Casino $casino): void

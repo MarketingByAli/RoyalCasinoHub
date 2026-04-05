@@ -105,9 +105,9 @@
             </div>
         </div>
 
-        @if($casino->screenshot_url)
+        @if($casino->effectiveScreenshotUrl())
             <div class="mb-8">
-                <img src="{{ $casino->screenshot_url }}" alt="{{ $casino->screenshot_alt ?? $casino->name }} screenshot" width="1200" height="630" class="w-full rounded-2xl border border-amber-900/20" loading="lazy">
+                <img src="{{ $casino->effectiveScreenshotUrl() }}" alt="{{ $casino->screenshot_alt ?? $casino->name }} screenshot" width="1200" height="630" class="w-full rounded-2xl border border-amber-900/20" loading="lazy">
             </div>
         @endif
 

@@ -334,4 +334,32 @@ class Casino extends Model
 
         return $links === [] ? null : $links;
     }
+
+    /**
+     * Resolved image URL for display/OG: stored screenshot, else configured default.
+     */
+    public function effectiveScreenshotUrl(): ?string
+    {
+        $raw = $this->screenshot_url;
+        if ($raw === null || trim((string) $raw) === '') {
+            $default = config('casinos.default_screenshot_url');
+            $raw = is_string($default) ? trim($default) : '';
+        }
+        if ($raw === '') {
+            return null;
+        }
+
+        $raw = trim((string) $raw);
+        if (str_starts_with($raw, '//')) {
+            return 'https:'.$raw;
+        }
+        if (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://')) {
+            return $raw;
+        }
+        if (str_starts_with($raw, '/')) {
+            return url($raw);
+        }
+
+        return $raw;
+    }
 }

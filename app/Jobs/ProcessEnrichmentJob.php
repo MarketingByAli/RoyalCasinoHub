@@ -90,9 +90,7 @@ class ProcessEnrichmentJob implements ShouldQueue
 
     private function processScreenshot(Casino $casino, EnrichmentService $service): string
     {
-        $screenshotUrl = $service->getScreenshotPlaceholder($casino);
-        $casino->update(['screenshot_url' => $screenshotUrl]);
-        return "Screenshot placeholder set";
+        return $service->captureScreenshotForCasino($casino);
     }
 
     private function processContent(Casino $casino, EnrichmentService $service): string

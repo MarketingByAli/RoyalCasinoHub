@@ -50,7 +50,7 @@ class CasinoController extends Controller
         $metaDescription = $casino->meta_description ?: $seoService->getMetaDescription(null, $casino);
         $canonical = $casino->canonical_url ?: url("/casino/{$casino->slug}");
         $robots = $casino->robots ?: 'index,follow';
-        $ogImage = $casino->logo_url ?: null;
+        $ogImage = $casino->effectiveScreenshotUrl() ?: ($casino->logo_url ?: null);
 
         $relatedCasinos = Casino::published()
             ->where('id', '!=', $casino->id)

@@ -20,7 +20,9 @@
     $finalDescription = $description ?? 'Trusted online casino reviews, ratings, and bonuses.';
     $finalCanonical = $canonical ?? url()->current();
     $finalRobots = $noindex ? 'noindex,nofollow' : ($robots ?? 'index,follow');
-    $ogImage = $image ?? 'https://via.placeholder.com/1200x630/0f0f1a/D4AF37?text=' . urlencode($siteName);
+    $configOg = config('casinos.default_screenshot_url');
+    $configOg = is_string($configOg) && trim($configOg) !== '' ? trim($configOg) : null;
+    $ogImage = $image ?? $configOg ?? 'https://via.placeholder.com/1200x630/0f0f1a/D4AF37?text=' . urlencode($siteName);
 @endphp
 
 <meta charset="utf-8">

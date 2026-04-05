@@ -66,8 +66,9 @@ class SeoService
             'description' => $casino->meta_description ?? $casino->short_description ?? Str::limit((string) $casino->description, 200),
         ];
 
-        if ($casino->logo_url) {
-            $schema['image'] = $casino->logo_url;
+        $schemaImage = $casino->logo_url ?: $casino->effectiveScreenshotUrl();
+        if ($schemaImage) {
+            $schema['image'] = $schemaImage;
         }
 
         if ($casino->country) {
