@@ -12,7 +12,10 @@ return [
     | you configure it.
     |
     */
-    'default_screenshot_url' => env('DEFAULT_CASINO_SCREENSHOT_URL'),
+    'default_screenshot_url' => env(
+        'DEFAULT_CASINO_SCREENSHOT_URL',
+        'https://royalcasinohub.com/7307.jpg'
+    ),
 
     /*
     |--------------------------------------------------------------------------
