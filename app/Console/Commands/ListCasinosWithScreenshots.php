@@ -113,10 +113,10 @@ class ListCasinosWithScreenshots extends Command
 
         $dir = storage_path('app/public/casino-screenshots');
         if (! is_dir($dir)) {
-            $this->line('Disk folder storage/app/public/casino-screenshots: missing (create by saving a capture, or mkdir + chmod)');
+            $this->line('Folder storage/app/public/casino-screenshots: not created yet — normal until the first screenshot job saves a file (Laravel creates this path automatically; no manual mkdir required).');
         } else {
             $n = count(glob($dir.DIRECTORY_SEPARATOR.'*') ?: []);
-            $this->line("Disk folder casino-screenshots: {$n} file(s)");
+            $this->line("Folder casino-screenshots: {$n} file(s) on disk");
         }
 
         $byStatus = EnrichmentQueue::query()
