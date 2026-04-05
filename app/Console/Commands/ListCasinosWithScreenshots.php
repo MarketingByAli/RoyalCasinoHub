@@ -14,7 +14,7 @@ class ListCasinosWithScreenshots extends Command
     protected $signature = 'casinos:list-screenshots
                             {--limit=20 : Number of casinos to show}
                             {--any : Include any non-empty screenshot_url (not only locally stored captures)}
-                            {--diagnose : Print DB/queue/disk stats (also runs when default list is empty)}';
+                            {--diagnose : Print DB/queue/disk stats after a successful list}';
 
     protected $description = 'List recent casinos with screenshots (default: auto-captured files under storage/casino-screenshots)';
 
@@ -36,14 +36,14 @@ class ListCasinosWithScreenshots extends Command
             ->get(['id', 'name', 'slug', 'screenshot_url', 'website', 'updated_at']);
 
         if ($casinos->isEmpty()) {
-            $this->warn('No casinos matched. Try --any to list any listing with a screenshot URL set.');
-            if (! $this->option('any')) {
-                $this->line('Tip: Auto-capture saves files under storage/app/public/casino-screenshots/ and sets a URL containing that path.');
+            if ($this->option('any')) {
+                $this->warn('No casinos have screenshot_url set in the database (column is null or empty for everyone).');
+            } else {
+                $this->warn('No casinos matched (none with a stored capture URL containing "casino-screenshots").');
+                $this->line('Tip: Run with --any to include default/manual URLs; auto-capture files live under storage/app/public/casino-screenshots/.');
             }
-            if (! $this->option('any') || $this->option('diagnose')) {
-                $this->newLine();
-                $this->diagnose();
-            }
+            $this->newLine();
+            $this->diagnose();
 
             return self::SUCCESS;
         }
@@ -130,15 +130,19 @@ class ListCasinosWithScreenshots extends Command
             $this->line('Enrichment screenshot jobs: '.$byStatus->map(fn ($c, $s) => "{$s}={$c}")->implode(', '));
         }
 
+        $pendingAll = EnrichmentQueue::query()->where('status', 'pending')->count();
+        $this->line("All enrichment_queue rows still pending (any job type): {$pendingAll}");
+
         if (Schema::hasTable('jobs')) {
             $pending = (int) DB::table('jobs')->count();
             $this->line("Laravel queue table `jobs` rows (waiting for worker): {$pending}");
         }
 
         $this->newLine();
-        $this->line('Typical fix if stored count is 0: run a queue worker continuously, e.g. php artisan queue:work');
-        $this->line('Then: php artisan enrichment:process   (or wait for cron schedule:run every minute)');
-        $this->line('Re-queue a casino from admin (Queue enrichment) after deploy if jobs failed earlier.');
+        $this->warn('Your numbers mean work is backlogged: enrichment rows wait for `enrichment:process` to dispatch them; `jobs` waits for `queue:work`.');
+        $this->line('1) Start a worker and keep it running (Supervisor/cPanel daemon): php artisan queue:work --sleep=3 --tries=3');
+        $this->line('2) Dispatch more batches (scheduler only does 20 every 5 min): php artisan enrichment:process --limit=100');
+        $this->line('3) Run: php artisan storage:link   (once) so /storage URLs work after files are saved.');
     }
 }
 
