@@ -295,7 +295,7 @@
 
     @if($countries->count() > 18)
         <div class="text-center" style="margin-top:24px">
-            <a href="{{ route('search') }}" class="inline-flex items-center gap-2" style="color:rgba(251,191,36,0.6);font-size:14px;font-weight:500;text-decoration:none;transition:color 0.2s" onmouseover="this.style.color='#fbbf24'" onmouseout="this.style.color='rgba(251,191,36,0.6)'">
+            <a href="{{ route('countries.index') }}" class="inline-flex items-center gap-2" style="color:rgba(251,191,36,0.6);font-size:14px;font-weight:500;text-decoration:none;transition:color 0.2s" onmouseover="this.style.color='#fbbf24'" onmouseout="this.style.color='rgba(251,191,36,0.6)'">
                 View all {{ $countries->count() }} countries
                 <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
             </a>
@@ -324,7 +324,7 @@
                 <p style="color:#6b7280;margin-top:12px;max-width:480px;margin-left:auto;margin-right:auto;font-size:14px">Every casino on our platform goes through a rigorous review process.</p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" style="gap:20px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px">
                 @php
                 $trustFeatures = [
                     ['icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>', 'title' => 'Verified Legitimacy', 'desc' => 'Every casino is checked for valid licenses and regulatory compliance before listing.', 'stat' => '100%', 'statLabel' => 'Verified'],

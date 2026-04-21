@@ -53,6 +53,7 @@
                         <input type="search" name="q" value="{{ request('q') }}" placeholder="Search casinos..."
                             class="bg-slate-900/80 border border-amber-900/20 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/20 focus:outline-none w-52 transition-all">
                     </form>
+                    <a href="{{ route('countries.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Countries</a>
                     <a href="{{ route('blog.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Blog</a>
                     <a href="{{ route('reviews.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Reviews</a>
                     @auth
@@ -96,6 +97,7 @@
             </form>
             <nav class="space-y-2">
                 <a href="{{ route('home') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Home</a>
+                <a href="{{ route('countries.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Countries</a>
                 <a href="{{ route('blog.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Blog</a>
                 <a href="{{ route('reviews.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Reviews</a>
                 @auth

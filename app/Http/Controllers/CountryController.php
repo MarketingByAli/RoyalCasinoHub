@@ -8,6 +8,27 @@ use Illuminate\Http\Request;
 
 class CountryController extends Controller
 {
+    public function index()
+    {
+        $countries = Casino::published()
+            ->selectRaw('country, country_slug, COUNT(*) as casinos_count')
+            ->whereNotNull('country')
+            ->where('country', '!=', '')
+            ->groupBy('country', 'country_slug')
+            ->orderBy('country')
+            ->get();
+
+        $metaTitle = 'Browse Casinos by Country | '.SeoSetting::get('site_name', 'RoyalCasinoHub');
+        $metaDescription = 'Explore online casinos available in '.$countries->count().'+ countries. Find the best casinos for your region with expert reviews and ratings.';
+
+        return view('country.index', [
+            'countries' => $countries,
+            'meta_title' => $metaTitle,
+            'meta_description' => $metaDescription,
+            'canonical' => route('countries.index'),
+        ]);
+    }
+
     public function show(Request $request, string $slug)
     {
         $sort = $request->query('sort', 'name');

@@ -66,6 +66,7 @@ Route::get('/sitemap-casinos-{page}.xml', [SitemapController::class, 'casinos'])
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/casino/{slug}', [CasinoController::class, 'show'])->name('casino.show');
+Route::get('/countries', [CountryController::class, 'index'])->name('countries.index');
 Route::get('/country/{slug}', [CountryController::class, 'show'])->name('country.show');
 Route::get('/compare', [CompareController::class, 'show'])->name('compare.show');
 Route::get('/blog', [PostController::class, 'index'])->name('blog.index');
