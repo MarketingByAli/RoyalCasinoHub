@@ -132,6 +132,7 @@
         </div>
     @endif
 
+    @yield('hero')
     <main class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         @if(session('success'))
             <div class="mb-6 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-lg">{{ session('success') }}</div>

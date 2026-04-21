@@ -14,3 +14,68 @@
     --color-casino-black: #0a0a0f;
     --color-casino-card: #12121a;
 }
+
+/* ── Gold gradient text ─────────────────────────── */
+.gold-gradient-text {
+    background: linear-gradient(135deg, #f6d365 0%, #D4AF37 40%, #fda085 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Section header layout helper ──────────────── */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.section-title-bar {
+    width: 0.2rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background: linear-gradient(to bottom, #f59e0b, #b45309);
+    flex-shrink: 0;
+}
+
+.section-title {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.01em;
+}
+
+/* ── Slow pulse animations for hero orbs ───────── */
+@keyframes pulse-slow {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50%       { opacity: 0.7; transform: scale(1.08); }
+}
+
+@keyframes pulse-slow-delay {
+    0%, 100% { opacity: 0.3; transform: scale(1.05); }
+    50%       { opacity: 0.6; transform: scale(0.95); }
+}
+
+.animate-pulse-slow {
+    animation: pulse-slow 8s ease-in-out infinite;
+}
+
+.animate-pulse-slow-delay {
+    animation: pulse-slow-delay 10s ease-in-out infinite 2s;
+}
+
+/* ── Shimmer effect for card top borders ────────── */
+@keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+}
+
+/* ── Subtle card entrance (applied via JS if desired) ── */
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+    animation: fade-up 0.5s ease both;
+}
