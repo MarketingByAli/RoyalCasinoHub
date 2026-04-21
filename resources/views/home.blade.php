@@ -35,8 +35,8 @@
 
         <form action="{{ route('search') }}" method="GET" class="max-w-2xl mx-auto mb-6">
             <div class="relative flex items-center" style="box-shadow:0 25px 60px rgba(0,0,0,0.5),0 0 40px rgba(212,175,55,0.08);border-radius:16px">
-                <div class="absolute left-5 pointer-events-none" style="color:#6b7280">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <div style="position:absolute;left:20px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;display:flex;align-items:center">
+                    <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
@@ -65,20 +65,23 @@
             <a href="{{ route('search', ['q' => 'no deposit bonus']) }}" style="color:#9ca3af;text-decoration:none;transition:color 0.2s" onmouseover="this.style.color='#fbbf24'" onmouseout="this.style.color='#9ca3af'">No Deposit Bonus</a>
         </div>
 
-        <div class="inline-grid grid-cols-2 sm:grid-cols-4 gap-0" style="background:rgba(10,10,20,0.7);border:1px solid rgba(180,120,30,0.2);border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.3);backdrop-filter:blur(12px)">
-            <div style="padding:20px 32px;text-align:center;border-right:1px solid rgba(180,120,30,0.15)">
+        <div style="display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;background:rgba(10,10,20,0.7);border:1px solid rgba(180,120,30,0.2);border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.3);backdrop-filter:blur(12px)">
+            <div style="padding:20px 28px;text-align:center">
                 <div class="gold-gradient-text" style="font-size:1.75rem;font-weight:700;font-family:'Playfair Display',serif">5,000+</div>
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;letter-spacing:0.1em;text-transform:uppercase">Casinos Listed</div>
             </div>
-            <div style="padding:20px 32px;text-align:center;border-right:1px solid rgba(180,120,30,0.15)">
+            <div style="width:1px;height:40px;background:rgba(180,120,30,0.2);flex-shrink:0" aria-hidden="true"></div>
+            <div style="padding:20px 28px;text-align:center">
                 <div class="gold-gradient-text" style="font-size:1.75rem;font-weight:700;font-family:'Playfair Display',serif">10K+</div>
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;letter-spacing:0.1em;text-transform:uppercase">User Reviews</div>
             </div>
-            <div style="padding:20px 32px;text-align:center;border-right:1px solid rgba(180,120,30,0.15)">
+            <div style="width:1px;height:40px;background:rgba(180,120,30,0.2);flex-shrink:0" aria-hidden="true"></div>
+            <div style="padding:20px 28px;text-align:center">
                 <div class="gold-gradient-text" style="font-size:1.75rem;font-weight:700;font-family:'Playfair Display',serif">100+</div>
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;letter-spacing:0.1em;text-transform:uppercase">Countries</div>
             </div>
-            <div style="padding:20px 32px;text-align:center">
+            <div style="width:1px;height:40px;background:rgba(180,120,30,0.2);flex-shrink:0" aria-hidden="true"></div>
+            <div style="padding:20px 28px;text-align:center">
                 <div class="gold-gradient-text" style="font-size:1.75rem;font-weight:700;font-family:'Playfair Display',serif">100%</div>
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;letter-spacing:0.1em;text-transform:uppercase">Independent</div>
             </div>
