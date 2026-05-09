@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Casino;
 use App\Models\CasinoOffer;
+use App\Models\EnrichmentQueue;
 use App\Services\ActivityLogger;
 use App\Services\CasinoIntakeService;
 use App\Services\EnrichmentService;
@@ -286,6 +287,12 @@ class CasinoAdminController extends Controller
     public function queueEnrichment(Casino $casino, EnrichmentService $enrichmentService)
     {
         $enrichmentService->createEnrichmentJobs($casino);
+        EnrichmentQueue::where('casino_id', $casino->id)->update([
+            'status' => 'pending',
+            'attempts' => 0,
+            'result' => null,
+            'last_attempted_at' => null,
+        ]);
         $casino->enrichment_status = 'pending';
         $casino->enrichment_last_error = null;
         $casino->save();

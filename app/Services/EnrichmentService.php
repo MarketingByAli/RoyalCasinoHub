@@ -117,7 +117,7 @@ class EnrichmentService
         $client = new Client(apiKey: $apiKey);
         $message = $client->messages->create(
             maxTokens: 500,
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-haiku-4-5-20251001',
             messages: [
                 [
                     'role' => 'user',
