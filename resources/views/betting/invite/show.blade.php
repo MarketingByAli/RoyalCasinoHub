@@ -12,7 +12,7 @@
     </div>
     @auth
         @if(auth()->user()->bettingProfile)
-            <a href="{{ route('betting.challenges.show', $market) }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl">Review & accept</a>
+            <a href="{{ route('betting.challenges.show', [$market, 'invite_token' => $market->invite_token]) }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl">Review & accept</a>
         @else
             <a href="{{ route('betting.onboarding') }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl">Complete profile first</a>
         @endif

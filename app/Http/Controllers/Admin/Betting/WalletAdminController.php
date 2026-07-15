@@ -6,7 +6,7 @@ use App\Betting\Services\PlayWalletService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class WalletAdminController extends Controller
 {
@@ -21,9 +21,19 @@ class WalletAdminController extends Controller
             'amount' => 'required|numeric',
             'reason' => 'required|string|max:500',
             'confirm_reason' => 'required|string|same:reason',
+            'confirm_username' => [
+                'required',
+                'string',
+                Rule::in(array_values(array_filter([
+                    $user->bettingProfile?->username,
+                    $user->email,
+                    (string) $user->id,
+                ]))),
+            ],
+            'idempotency_key' => 'required|uuid',
         ]);
 
-        $idempotencyKey = 'manual_adjust:'.$user->id.':'.Str::uuid();
+        $idempotencyKey = 'manual_adjust:'.$user->id.':'.$validated['idempotency_key'];
 
         try {
             $walletService->manualAdjust(
@@ -37,6 +47,6 @@ class WalletAdminController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Wallet adjusted.');
+        return back()->with('success', 'Wallet adjusted for user #'.$user->id.'.');
     }
 }

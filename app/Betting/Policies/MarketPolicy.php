@@ -22,7 +22,15 @@ class MarketPolicy
             return true;
         }
 
-        return $market->status === MarketStatus::Open;
+        if ($market->status !== MarketStatus::Open) {
+            return false;
+        }
+
+        if ($market->visibility !== 'private_invite') {
+            return true;
+        }
+
+        return $this->hasInviteAccess($market);
     }
 
     public function cancel(User $user, Market $market): bool
@@ -38,13 +46,28 @@ class MarketPolicy
 
         $market->loadMissing('creator');
 
-        return ! $user->isBlockedBy($market->creator)
-            && ! $market->creator->isBlockedBy($user);
+        if ($user->isBlockedBy($market->creator) || $market->creator->isBlockedBy($user)) {
+            return false;
+        }
+
+        if ($market->visibility === 'private_invite' && ! $this->hasInviteAccess($market)) {
+            return false;
+        }
+
+        return true;
     }
 
     public function dispute(User $user, Market $market): bool
     {
         return $market->status === MarketStatus::DisputeWindow
             && $market->participants()->where('user_id', $user->id)->exists();
+    }
+
+    private function hasInviteAccess(Market $market): bool
+    {
+        $token = request()->input('invite_token')
+            ?? request()->session()->get('betting.invite_tokens.'.$market->id);
+
+        return is_string($token) && $token !== '' && hash_equals((string) $market->invite_token, $token);
     }
 }

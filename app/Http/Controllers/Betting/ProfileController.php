@@ -91,6 +91,10 @@ class ProfileController extends Controller
 
     public function block(User $user)
     {
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'You cannot block yourself.');
+        }
+
         UserBlock::firstOrCreate([
             'blocker_id' => auth()->id(),
             'blocked_id' => $user->id,
@@ -101,6 +105,10 @@ class ProfileController extends Controller
 
     public function report(Request $request, User $user)
     {
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'You cannot report yourself.');
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:64',
             'explanation' => 'nullable|string|max:2000',

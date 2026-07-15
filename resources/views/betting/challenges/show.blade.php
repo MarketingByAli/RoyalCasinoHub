@@ -37,7 +37,16 @@
                 <h2 class="font-semibold text-white mb-3">Accept challenge?</h2>
                 <p class="text-sm text-gray-400 mb-4">You will bet on <strong class="text-white">{{ $market->challengerOutcome() }}</strong> for {{ number_format($market->stake_amount, 0) }} pts.</p>
                 @if($wallet)<p class="text-xs text-gray-500 mb-4">Your balance: {{ number_format($wallet->available, 0) }} available</p>@endif
-                <form action="{{ route('betting.challenges.accept', $market) }}" method="POST" class="mb-2">@csrf<button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold py-2 rounded-lg">Accept & lock stake</button></form>
+                <form action="{{ route('betting.challenges.accept', $market) }}" method="POST" class="mb-2">
+                    @csrf
+                    @if(!empty($inviteToken))
+                        <input type="hidden" name="invite_token" value="{{ $inviteToken }}">
+                    @endif
+                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold py-2 rounded-lg">Accept & lock stake</button>
+                </form>
+                @if(empty($inviteToken))
+                    <p class="text-xs text-red-400">Open the private invite link first to unlock accept.</p>
+                @endif
             @elseif($isParticipant)
                 <h2 class="font-semibold text-white mb-2">Participants</h2>
                 @foreach($market->participants as $p)

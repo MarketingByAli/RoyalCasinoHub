@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Betting;
 
+use App\Betting\Enums\MarketStatus;
 use App\Betting\Models\Market;
 use App\Betting\Services\MarketService;
 use App\Betting\Services\SettlementService;
@@ -14,19 +15,52 @@ class MarketAdminController extends Controller
     {
         $query = Market::with(['event', 'creator'])->latest();
 
-        if ($request->filled('status')) {
+        if ($request->get('status') === 'stuck') {
+            $query->where(function ($q) {
+                $q->where(function ($open) {
+                    $open->where('status', MarketStatus::Open)
+                        ->whereNotNull('expires_at')
+                        ->where('expires_at', '<', now());
+                })->orWhere(function ($dispute) {
+                    $dispute->where('status', MarketStatus::DisputeWindow)
+                        ->whereNotNull('dispute_window_ends_at')
+                        ->where('dispute_window_ends_at', '<', now());
+                })->orWhere(function ($matched) {
+                    $matched->where('status', MarketStatus::FullyMatched)
+                        ->whereHas('event', fn ($event) => $event->where('start_at', '<', now()));
+                });
+            });
+        } elseif ($request->filled('status')) {
             $query->where('status', $request->status);
         } elseif (! $request->has('status')) {
             $query->where('status', 'pending_review');
         }
 
         $markets = $query->paginate(25);
+        $stuckCount = Market::query()
+            ->where(function ($q) {
+                $q->where(function ($open) {
+                    $open->where('status', MarketStatus::Open)
+                        ->whereNotNull('expires_at')
+                        ->where('expires_at', '<', now());
+                })->orWhere(function ($dispute) {
+                    $dispute->where('status', MarketStatus::DisputeWindow)
+                        ->whereNotNull('dispute_window_ends_at')
+                        ->where('dispute_window_ends_at', '<', now());
+                })->orWhere(function ($matched) {
+                    $matched->where('status', MarketStatus::FullyMatched)
+                        ->whereHas('event', fn ($event) => $event->where('start_at', '<', now()));
+                });
+            })
+            ->count();
 
-        return view('admin.betting.markets.index', compact('markets'));
+        return view('admin.betting.markets.index', compact('markets', 'stuckCount'));
     }
 
-    public function show(Market $market)
+    public function show(Market $market, SettlementService $settlementService)
     {
+        $market = $settlementService->ensureDisputeWindowFinalized($market);
+
         $market->load(['event', 'creator', 'challenger', 'currentVersion', 'participants', 'disputes']);
         $auditLogs = \App\Betting\Models\AuditLog::where('auditable_type', Market::class)
             ->where('auditable_id', $market->id)
@@ -74,15 +108,17 @@ class MarketAdminController extends Controller
         return back()->with('success', 'Result published.');
     }
 
-    public function settle(Market $market, SettlementService $settlementService)
+    public function settle(Request $request, Market $market, SettlementService $settlementService)
     {
+        $force = $request->boolean('force_settle');
+
         try {
-            $settlementService->settleMarket($market);
+            $settlementService->settleMarket($market, force: $force);
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Market settled.');
+        return back()->with('success', $force ? 'Market force-settled.' : 'Market settled.');
     }
 
     public function void(Market $market, SettlementService $settlementService)

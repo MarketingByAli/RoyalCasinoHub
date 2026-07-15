@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Betting\Enums\MarketStatus;
 use App\Betting\Models\Market;
-use App\Betting\Services\MarketStateMachine;
+use App\Betting\Services\MarketService;
 use Illuminate\Console\Command;
 
 class ExpireOpenMarkets extends Command
@@ -13,7 +13,7 @@ class ExpireOpenMarkets extends Command
 
     protected $description = 'Expire open challenges past their invitation expiry';
 
-    public function handle(MarketStateMachine $stateMachine): int
+    public function handle(MarketService $marketService): int
     {
         $count = 0;
 
@@ -21,8 +21,8 @@ class ExpireOpenMarkets extends Command
             ->where('status', MarketStatus::Open)
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
-            ->each(function (Market $market) use ($stateMachine, &$count) {
-                $stateMachine->transition($market, MarketStatus::Expired, null, 'invite_expired');
+            ->each(function (Market $market) use ($marketService, &$count) {
+                $marketService->expireOpenMarket($market);
                 $count++;
             });
 

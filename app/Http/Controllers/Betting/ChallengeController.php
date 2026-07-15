@@ -6,6 +6,7 @@ use App\Betting\Models\BettingEvent;
 use App\Betting\Models\Market;
 use App\Betting\Services\MarketService;
 use App\Betting\Services\PlayWalletService;
+use App\Betting\Services\SettlementService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -65,23 +66,42 @@ class ChallengeController extends Controller
                 : 'Challenge submitted for review.');
     }
 
-    public function show(Market $market, PlayWalletService $walletService)
+    public function show(Market $market, PlayWalletService $walletService, SettlementService $settlementService)
     {
+        if ($token = request('invite_token')) {
+            session()->put('betting.invite_tokens.'.$market->id, $token);
+        }
+
+        $market = $settlementService->ensureDisputeWindowFinalized($market);
+
         $this->authorize('view', $market);
 
         $market->load(['event', 'creator.bettingProfile', 'challenger.bettingProfile', 'currentVersion', 'participants.user.bettingProfile']);
 
         $wallet = auth()->check() ? $walletService->getOrCreateWallet(auth()->user()) : null;
+        $inviteToken = session('betting.invite_tokens.'.$market->id);
 
-        return view('betting.challenges.show', compact('market', 'wallet'));
+        return view('betting.challenges.show', compact('market', 'wallet', 'inviteToken'));
     }
 
-    public function accept(Market $market, MarketService $marketService)
+    public function accept(Request $request, Market $market, MarketService $marketService)
     {
+        $validated = $request->validate([
+            'invite_token' => 'nullable|string|max:64',
+        ]);
+
+        $inviteToken = $validated['invite_token']
+            ?? session('betting.invite_tokens.'.$market->id);
+
+        if (is_string($inviteToken) && $inviteToken !== '') {
+            session()->put('betting.invite_tokens.'.$market->id, $inviteToken);
+            $request->merge(['invite_token' => $inviteToken]);
+        }
+
         $this->authorize('accept', $market);
 
         try {
-            $marketService->acceptChallenge($market, auth()->user());
+            $marketService->acceptChallenge($market, auth()->user(), $inviteToken);
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -91,6 +111,8 @@ class ChallengeController extends Controller
 
     public function decline(Market $market, MarketService $marketService)
     {
+        $this->authorize('cancel', $market);
+
         try {
             $marketService->declineChallenge($market, auth()->user());
         } catch (\Throwable $e) {

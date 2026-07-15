@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\Betting\AccountAdminController;
 use App\Http\Controllers\Admin\Betting\DisputeAdminController;
 use App\Http\Controllers\Admin\Betting\EventAdminController;
 use App\Http\Controllers\Admin\Betting\MarketAdminController;
@@ -72,6 +73,9 @@ Route::middleware(['auth', 'admin', 'active'])->prefix('admin/betting')->name('a
 
     Route::get('/wallets', [WalletAdminController::class, 'index'])->name('wallets.index');
     Route::post('/users/{user}/wallet-adjust', [WalletAdminController::class, 'adjust'])->name('wallets.adjust');
+
+    Route::get('/users/{user}/account', [AccountAdminController::class, 'edit'])->name('accounts.edit');
+    Route::put('/users/{user}/account', [AccountAdminController::class, 'update'])->name('accounts.update');
 
     Route::get('/reports', [UserReportAdminController::class, 'index'])->name('reports.index');
     Route::post('/reports/{report}/reviewed', [UserReportAdminController::class, 'updateStatus'])->name('reports.reviewed');

@@ -91,14 +91,17 @@ class MarketService
             ? MarketStatus::PendingReview
             : MarketStatus::Approved;
 
-        $market = $this->stateMachine->transition($market, MarketStatus::PendingReview, $creator, 'submitted_for_review');
+        return DB::transaction(function () use ($market, $creator, $to) {
+            $market = $this->stateMachine->transition($market, MarketStatus::PendingReview, $creator, 'submitted_for_review');
 
-        if ($to === MarketStatus::Approved) {
-            $market = $this->stateMachine->transition($market, MarketStatus::Approved, null, 'auto_approved');
-            $market = $this->stateMachine->transition($market, MarketStatus::Open, null, 'published');
-        }
+            if ($to === MarketStatus::Approved) {
+                $market = $this->stateMachine->transition($market, MarketStatus::Approved, null, 'auto_approved');
+                $market = $this->stateMachine->transition($market, MarketStatus::Open, null, 'published');
+                $this->reserveCreatorStake($market);
+            }
 
-        return $market->fresh();
+            return $market->fresh();
+        });
     }
 
     public function approve(Market $market, User $admin): Market
@@ -111,9 +114,13 @@ class MarketService
             throw new RuntimeException('A similar open challenge already exists for this event.');
         }
 
-        $market = $this->stateMachine->transition($market, MarketStatus::Approved, $admin, 'admin_approved');
+        return DB::transaction(function () use ($market, $admin) {
+            $market = $this->stateMachine->transition($market, MarketStatus::Approved, $admin, 'admin_approved');
+            $market = $this->stateMachine->transition($market, MarketStatus::Open, $admin, 'published');
+            $this->reserveCreatorStake($market);
 
-        return $this->stateMachine->transition($market, MarketStatus::Open, $admin, 'published');
+            return $market->fresh();
+        });
     }
 
     public function reject(Market $market, User $admin, string $reason): Market
@@ -128,7 +135,7 @@ class MarketService
         return $this->stateMachine->transition($market, MarketStatus::Rejected, $admin, $reason);
     }
 
-    public function acceptChallenge(Market $market, User $challenger): Market
+    public function acceptChallenge(Market $market, User $challenger, ?string $inviteToken = null): Market
     {
         if ($market->status !== MarketStatus::Open) {
             throw new RuntimeException('This challenge is not open for acceptance.');
@@ -139,13 +146,16 @@ class MarketService
         }
 
         if ($market->expires_at && $market->expires_at->isPast()) {
-            $this->stateMachine->transition($market, MarketStatus::Expired, null, 'invite_expired');
+            $this->expireOpenMarket($market);
+
             throw new RuntimeException('This invitation has expired.');
         }
 
         if ($market->betting_close_at && $market->betting_close_at->isPast()) {
             throw new RuntimeException('Betting is closed for this challenge.');
         }
+
+        $this->assertInviteAuthorized($market, $inviteToken);
 
         $market->loadMissing('creator');
         if ($challenger->isBlockedBy($market->creator) || $market->creator->isBlockedBy($challenger)) {
@@ -155,7 +165,7 @@ class MarketService
         $stake = (float) $market->stake_amount;
         $this->assertBettingAllowed($challenger, $stake, requireAvailable: true);
 
-        return DB::transaction(function () use ($market, $challenger, $stake) {
+        return DB::transaction(function () use ($market, $challenger, $stake, $inviteToken) {
             $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
 
             if ($market->status !== MarketStatus::Open) {
@@ -165,6 +175,8 @@ class MarketService
             if ($market->betting_close_at && $market->betting_close_at->isPast()) {
                 throw new RuntimeException('Betting is closed for this challenge.');
             }
+
+            $this->assertInviteAuthorized($market, $inviteToken);
 
             $challengerOutcome = $market->challengerOutcome();
             if (! $challengerOutcome) {
@@ -181,6 +193,7 @@ class MarketService
                 'terms_snapshot' => $termsSnapshot,
             ]);
 
+            // Creator stake should already be reserved on Open; idempotent if present.
             $this->walletService->lockStake(
                 $market->creator,
                 $stake,
@@ -236,7 +249,7 @@ class MarketService
     public function declineChallenge(Market $market, User $user): Market
     {
         if ($market->creator_id === $user->id && $market->status === MarketStatus::Open) {
-            return $this->stateMachine->transition($market, MarketStatus::Cancelled, $user, 'creator_cancelled');
+            return $this->cancelBeforeMatch($market, $user);
         }
 
         throw new RuntimeException('Cannot decline this challenge.');
@@ -250,7 +263,34 @@ class MarketService
             throw new RuntimeException('Cannot cancel market in current state.');
         }
 
-        return $this->stateMachine->transition($market, MarketStatus::Cancelled, $creator, 'cancelled_before_match');
+        return DB::transaction(function () use ($market, $creator) {
+            $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($market->status, [MarketStatus::Draft, MarketStatus::PendingReview, MarketStatus::Approved, MarketStatus::Open], true)) {
+                throw new RuntimeException('Cannot cancel market in current state.');
+            }
+
+            if ($market->status === MarketStatus::Open) {
+                $this->releaseCreatorReserve($market);
+            }
+
+            return $this->stateMachine->transition($market, MarketStatus::Cancelled, $creator, 'cancelled_before_match');
+        });
+    }
+
+    public function expireOpenMarket(Market $market): Market
+    {
+        return DB::transaction(function () use ($market) {
+            $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
+
+            if ($market->status !== MarketStatus::Open) {
+                return $market;
+            }
+
+            $this->releaseCreatorReserve($market);
+
+            return $this->stateMachine->transition($market, MarketStatus::Expired, null, 'invite_expired');
+        });
     }
 
     /**
@@ -280,6 +320,47 @@ class MarketService
             'dispute_window_hours' => $market->dispute_window_hours,
             'locked_at' => now()->toIso8601String(),
         ];
+    }
+
+    private function reserveCreatorStake(Market $market): void
+    {
+        $market->loadMissing('creator');
+
+        $this->walletService->lockStake(
+            $market->creator,
+            (float) $market->stake_amount,
+            Market::class,
+            $market->id,
+            'stake_lock:market:'.$market->id.':creator'
+        );
+    }
+
+    private function releaseCreatorReserve(Market $market): void
+    {
+        $market->loadMissing('creator');
+
+        if (! $this->walletService->hasActiveCreatorReserve($market)) {
+            return;
+        }
+
+        $this->walletService->releaseStake(
+            $market->creator,
+            (float) $market->stake_amount,
+            Market::class,
+            $market->id,
+            'stake_release:market:'.$market->id.':creator'
+        );
+    }
+
+    private function assertInviteAuthorized(Market $market, ?string $inviteToken): void
+    {
+        if ($market->visibility !== 'private_invite') {
+            return;
+        }
+
+        if (! is_string($inviteToken) || $inviteToken === '' || ! hash_equals((string) $market->invite_token, $inviteToken)) {
+            throw new RuntimeException('A valid invite link is required to accept this challenge.');
+        }
     }
 
     private function assertCreator(Market $market, User $user): void

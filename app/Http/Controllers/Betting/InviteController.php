@@ -22,6 +22,8 @@ class InviteController extends Controller
             return view('betting.invite.expired', compact('market'));
         }
 
+        session()->put('betting.invite_tokens.'.$market->id, $market->invite_token);
+
         return view('betting.invite.show', compact('market'));
     }
 }

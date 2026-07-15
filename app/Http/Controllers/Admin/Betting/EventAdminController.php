@@ -73,7 +73,11 @@ class EventAdminController extends Controller
             'winning_outcome' => 'required|string|max:100',
         ]);
 
-        $settlementService->publishEventResult($event, $validated['winning_outcome'], auth()->user());
+        try {
+            $settlementService->publishEventResult($event, $validated['winning_outcome'], auth()->user());
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', 'Result published for all matched markets on this event.');
     }

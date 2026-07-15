@@ -250,10 +250,13 @@ class PlayWalletService
 
     public function pendingOpenExposure(User $user): float
     {
+        // Open challenges hard-reserve into locked; only count soft exposure for legacy unlocked opens.
         return (float) Market::query()
             ->where('creator_id', $user->id)
             ->where('status', MarketStatus::Open)
-            ->sum('stake_amount');
+            ->get()
+            ->filter(fn (Market $market) => ! $this->hasActiveCreatorReserve($market))
+            ->sum(fn (Market $market) => (float) $market->stake_amount);
     }
 
     public function totalExposure(User $user, ?Wallet $wallet = null): float
@@ -268,6 +271,23 @@ class PlayWalletService
         return LedgerEntry::query()
             ->whereHas('wallet', fn ($q) => $q->where('user_id', $user->id))
             ->where('idempotency_key', 'stake_lock:market:'.$market->id.':'.$role)
+            ->exists();
+    }
+
+    public function hasActiveCreatorReserve(Market $market): bool
+    {
+        if (! $this->hasStakeLockForMarket($market->creator, $market, 'creator')) {
+            return false;
+        }
+
+        return ! LedgerEntry::query()
+            ->whereHas('wallet', fn ($q) => $q->where('user_id', $market->creator_id))
+            ->whereIn('idempotency_key', [
+                'stake_release:market:'.$market->id.':creator',
+                'void_refund:market:'.$market->id.':user:'.$market->creator_id,
+                'settle_debit:market:'.$market->id.':user:'.$market->creator_id,
+                'settle_credit:market:'.$market->id.':user:'.$market->creator_id,
+            ])
             ->exists();
     }
 
