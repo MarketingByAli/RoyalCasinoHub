@@ -2,6 +2,13 @@
 
 namespace App\Models;
 
+use App\Betting\Models\Dispute;
+use App\Betting\Models\Follower;
+use App\Betting\Models\Market;
+use App\Betting\Models\UserBlock;
+use App\Betting\Models\UserProfile;
+use App\Betting\Models\UserReport;
+use App\Betting\Models\Wallet;
 use App\Notifications\QueuedResetPassword;
 use App\Notifications\QueuedVerifyEmail;
 use Database\Factories\UserFactory;
@@ -69,6 +76,51 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     public function favoriteCasinos(): BelongsToMany
     {
         return $this->belongsToMany(Casino::class, 'user_casino_favorites')->withTimestamps();
+    }
+
+    public function bettingProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    public function bettingWallet(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function createdMarkets(): HasMany
+    {
+        return $this->hasMany(Market::class, 'creator_id');
+    }
+
+    public function bettingDisputes(): HasMany
+    {
+        return $this->hasMany(Dispute::class);
+    }
+
+    public function followers(): HasMany
+    {
+        return $this->hasMany(Follower::class, 'following_id');
+    }
+
+    public function following(): HasMany
+    {
+        return $this->hasMany(Follower::class, 'follower_id');
+    }
+
+    public function blockedUsers(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocker_id');
+    }
+
+    public function reportsMade(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reporter_id');
+    }
+
+    public function isBlockedBy(User $user): bool
+    {
+        return UserBlock::where('blocker_id', $user->id)->where('blocked_id', $this->id)->exists();
     }
 
     /**

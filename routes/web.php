@@ -154,6 +154,8 @@ Route::middleware(['auth', 'active'])->group(function () {
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
+require __DIR__.'/betting.php';
+
 Route::middleware(['auth', 'admin', 'active'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', AdminDashboardController::class)->name('dashboard');
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');

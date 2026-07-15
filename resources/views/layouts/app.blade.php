@@ -56,6 +56,7 @@
                     <a href="{{ route('countries.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Countries</a>
                     <a href="{{ route('blog.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Blog</a>
                     <a href="{{ route('reviews.index') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Reviews</a>
+                    <a href="{{ route('betting.dashboard') }}" class="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium">Challenges</a>
                     @auth
                         @can('create', App\Models\Casino::class)
                             <a href="{{ route('casino-listings.create') }}" class="text-gray-400 hover:text-amber-400 text-sm font-medium">Add casino</a>

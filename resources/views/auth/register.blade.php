@@ -69,6 +69,11 @@
                 </div>
             </div>
 
+            <div class="border-t border-amber-900/20 pt-6 space-y-4">
+                <p class="text-sm font-medium text-gray-300">Betting profile (play money)</p>
+                @include('betting.partials.profile-fields', ['minimumAge' => $minimumAge ?? 18])
+            </div>
+
             <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold py-3 rounded-xl shadow-lg shadow-amber-900/20 transition-colors">
                 Create account
             </button>

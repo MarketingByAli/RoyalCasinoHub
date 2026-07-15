@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\CasinoOwnerMiddleware;
+use App\Http\Middleware\EnsureBettingEligible;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\RedirectOldUrls;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => AdminMiddleware::class,
+            'betting.eligible' => EnsureBettingEligible::class,
             'casino.owner' => CasinoOwnerMiddleware::class,
             'redirect.old' => RedirectOldUrls::class,
             'verified' => EnsureEmailIsVerified::class,

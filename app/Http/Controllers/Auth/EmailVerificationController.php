@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Betting\Services\UserProfileService;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 
 class EmailVerificationController extends Controller
 {
+    public function __construct(
+        private UserProfileService $profileService
+    ) {}
+
     public function notice(Request $request)
     {
         return $request->user()->hasVerifiedEmail()
-            ? redirect()->route('account.index')
+            ? redirect()->route('betting.dashboard')
             : view('auth.verify-email', [
                 'meta_title' => 'Verify Email | RoyalCasinoHub',
                 'meta_description' => 'Verify your email address to use all account features.',
@@ -23,13 +28,15 @@ class EmailVerificationController extends Controller
     {
         $request->fulfill();
 
-        return redirect()->route('home')->with('success', 'Your email has been verified.');
+        $this->profileService->markEmailVerified($request->user());
+
+        return redirect()->route('betting.dashboard')->with('success', 'Your email has been verified. Play points have been added to your wallet.');
     }
 
     public function send(Request $request)
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->route('home');
+            return redirect()->route('betting.dashboard');
         }
 
         $request->user()->sendEmailVerificationNotification();

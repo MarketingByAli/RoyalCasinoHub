@@ -31,6 +31,10 @@
                 <a href="{{ route('admin.redirects.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.redirects.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Redirects</a>
                 <a href="{{ route('admin.seo.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.seo.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">SEO Settings</a>
                 <a href="{{ route('admin.enrichment.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.enrichment.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Enrichment</a>
+                <span class="block px-4 pt-4 text-xs text-gray-600 uppercase tracking-wider">Betting</span>
+                <a href="{{ route('admin.betting.events.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.betting.events.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Events</a>
+                <a href="{{ route('admin.betting.markets.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.betting.markets.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Markets</a>
+                <a href="{{ route('admin.betting.disputes.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.betting.disputes.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Disputes</a>
                 <a href="{{ route('admin.activity.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.activity.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Activity log</a>
                 <a href="{{ route('admin.casino-reports.index') }}" class="block px-4 py-2 rounded-lg hover:bg-amber-500/20 {{ request()->routeIs('admin.casino-reports.*') ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400' }}">Casino reports</a>
                 <span class="block px-4 pt-4 text-xs text-gray-600 uppercase tracking-wider">Exports</span>
