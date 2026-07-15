@@ -3,7 +3,9 @@
 namespace App\Betting\Services;
 
 use App\Betting\Enums\LedgerEntryType;
+use App\Betting\Enums\MarketStatus;
 use App\Betting\Models\LedgerEntry;
+use App\Betting\Models\Market;
 use App\Betting\Models\Wallet;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -26,12 +28,7 @@ class PlayWalletService
     public function grantStarterPoints(User $user): bool
     {
         return DB::transaction(function () use ($user) {
-            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
-
-            if (! $wallet) {
-                $wallet = $this->getOrCreateWallet($user);
-                $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
-            }
+            $wallet = $this->lockWalletForUser($user);
 
             if ($wallet->starter_grant_issued) {
                 return false;
@@ -67,7 +64,12 @@ class PlayWalletService
                 return $this->getOrCreateWallet($user);
             }
 
-            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+            $wallet = $this->lockWalletForUser($user);
+
+            $maxLiability = (float) config('betting.max_open_liability_per_user', 20000);
+            if ($this->totalExposure($user, $wallet) + $amount > $maxLiability) {
+                throw new RuntimeException('Maximum exposure limit exceeded.');
+            }
 
             if (bccomp((string) $wallet->available, (string) $amount, 2) < 0) {
                 throw new RuntimeException('Insufficient available balance.');
@@ -97,7 +99,7 @@ class PlayWalletService
                 return $this->getOrCreateWallet($user);
             }
 
-            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+            $wallet = $this->lockWalletForUser($user);
 
             if (bccomp((string) $wallet->locked, (string) $amount, 2) < 0) {
                 throw new RuntimeException('Insufficient locked balance.');
@@ -120,6 +122,36 @@ class PlayWalletService
         });
     }
 
+    public function voidRefund(User $user, float $amount, string $referenceType, int $referenceId, string $idempotencyKey): Wallet
+    {
+        return DB::transaction(function () use ($user, $amount, $referenceType, $referenceId, $idempotencyKey) {
+            if (LedgerEntry::where('idempotency_key', $idempotencyKey)->exists()) {
+                return $this->getOrCreateWallet($user);
+            }
+
+            $wallet = $this->lockWalletForUser($user);
+
+            if (bccomp((string) $wallet->locked, (string) $amount, 2) < 0) {
+                throw new RuntimeException('Insufficient locked balance for void refund.');
+            }
+
+            $wallet->locked = bcsub((string) $wallet->locked, (string) $amount, 2);
+            $wallet->available = bcadd((string) $wallet->available, (string) $amount, 2);
+            $wallet->save();
+
+            $this->recordEntry(
+                $wallet,
+                LedgerEntryType::VoidRefund,
+                $amount,
+                $idempotencyKey,
+                $referenceType,
+                $referenceId
+            );
+
+            return $wallet->fresh();
+        });
+    }
+
     public function settleWinner(User $winner, float $lockedStake, float $totalPayout, string $referenceType, int $referenceId, string $idempotencyKey): Wallet
     {
         return DB::transaction(function () use ($winner, $lockedStake, $totalPayout, $referenceType, $referenceId, $idempotencyKey) {
@@ -127,7 +159,7 @@ class PlayWalletService
                 return $this->getOrCreateWallet($winner);
             }
 
-            $wallet = Wallet::where('user_id', $winner->id)->lockForUpdate()->firstOrFail();
+            $wallet = $this->lockWalletForUser($winner);
 
             if (bccomp((string) $wallet->locked, (string) $lockedStake, 2) < 0) {
                 throw new RuntimeException('Insufficient locked balance for winner settlement.');
@@ -158,7 +190,7 @@ class PlayWalletService
                 return $this->getOrCreateWallet($loser);
             }
 
-            $wallet = Wallet::where('user_id', $loser->id)->lockForUpdate()->firstOrFail();
+            $wallet = $this->lockWalletForUser($loser);
 
             if (bccomp((string) $wallet->locked, (string) $amount, 2) < 0) {
                 throw new RuntimeException('Insufficient locked balance for settlement.');
@@ -180,15 +212,14 @@ class PlayWalletService
         });
     }
 
-    public function voidRefund(User $user, float $amount, string $referenceType, int $referenceId, string $idempotencyKey): Wallet
+    public function manualAdjust(User $user, float $amount, string $reason, User $admin, string $idempotencyKey): Wallet
     {
-        return $this->releaseStake($user, $amount, $referenceType, $referenceId, $idempotencyKey);
-    }
+        return DB::transaction(function () use ($user, $amount, $reason, $admin, $idempotencyKey) {
+            if (LedgerEntry::where('idempotency_key', $idempotencyKey)->exists()) {
+                return $this->getOrCreateWallet($user);
+            }
 
-    public function manualAdjust(User $user, float $amount, string $reason, User $admin): Wallet
-    {
-        return DB::transaction(function () use ($user, $amount, $reason, $admin) {
-            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+            $wallet = $this->lockWalletForUser($user);
             $newAvailable = bcadd((string) $wallet->available, (string) $amount, 2);
 
             if (bccomp($newAvailable, '0', 2) < 0) {
@@ -202,7 +233,7 @@ class PlayWalletService
                 $wallet,
                 LedgerEntryType::ManualAdjustment,
                 abs($amount),
-                'manual_adjust:'.$user->id.':'.now()->timestamp,
+                $idempotencyKey,
                 User::class,
                 $user->id,
                 ['reason' => $reason, 'admin_id' => $admin->id, 'signed_amount' => $amount]
@@ -214,9 +245,37 @@ class PlayWalletService
 
     public function openLiability(User $user): float
     {
-        $wallet = $this->getOrCreateWallet($user);
+        return (float) ($this->getOrCreateWallet($user)->locked ?? 0);
+    }
 
-        return (float) $wallet->locked;
+    public function pendingOpenExposure(User $user): float
+    {
+        return (float) Market::query()
+            ->where('creator_id', $user->id)
+            ->where('status', MarketStatus::Open)
+            ->sum('stake_amount');
+    }
+
+    public function totalExposure(User $user, ?Wallet $wallet = null): float
+    {
+        $wallet ??= $this->getOrCreateWallet($user);
+
+        return (float) $wallet->locked + $this->pendingOpenExposure($user);
+    }
+
+    public function hasStakeLockForMarket(User $user, Market $market, string $role): bool
+    {
+        return LedgerEntry::query()
+            ->whereHas('wallet', fn ($q) => $q->where('user_id', $user->id))
+            ->where('idempotency_key', 'stake_lock:market:'.$market->id.':'.$role)
+            ->exists();
+    }
+
+    private function lockWalletForUser(User $user): Wallet
+    {
+        $this->getOrCreateWallet($user);
+
+        return Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
     }
 
     private function recordEntry(

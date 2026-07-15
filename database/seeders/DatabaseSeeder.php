@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(SeoSettingSeeder::class);
+        $this->call(BettingEventSeeder::class);
 
         if (! User::where('email', 'admin@royalcasinohub.com')->exists()) {
             User::create([

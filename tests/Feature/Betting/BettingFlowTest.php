@@ -6,7 +6,6 @@ use App\Betting\Enums\AccountState;
 use App\Betting\Enums\MarketStatus;
 use App\Betting\Models\BettingEvent;
 use App\Betting\Models\Market;
-use App\Betting\Models\UserProfile;
 use App\Betting\Services\MarketService;
 use App\Betting\Services\PlayWalletService;
 use App\Betting\Services\SettlementService;
@@ -188,5 +187,112 @@ class BettingFlowTest extends TestCase
 
         $this->assertEquals($hash, $market->fresh()->currentVersion->terms_hash);
         $this->assertEquals('Immutable test', $market->currentVersion->terms_snapshot['title']);
+    }
+
+    public function test_betting_close_blocks_acceptance(): void
+    {
+        $creator = $this->createBettingUser('m');
+        $challenger = $this->createBettingUser('n');
+        $event = $this->createEvent();
+
+        $market = app(MarketService::class)->createDraft($creator, $event, [
+            'title' => 'Close test',
+            'format' => 'yes_no',
+            'creator_outcome' => 'Yes',
+            'stake_amount' => 100,
+        ]);
+        $market = app(MarketService::class)->submitForReview($market, $creator);
+
+        $market->betting_close_at = now()->subMinute();
+        $market->save();
+
+        $this->expectException(\RuntimeException::class);
+        app(MarketService::class)->acceptChallenge($market->fresh(), $challenger);
+    }
+
+    public function test_invalid_winning_outcome_rejected(): void
+    {
+        $creator = $this->createBettingUser('o');
+        $challenger = $this->createBettingUser('p');
+        $event = $this->createEvent();
+
+        $market = app(MarketService::class)->createDraft($creator, $event, [
+            'title' => 'Invalid result',
+            'format' => 'yes_no',
+            'creator_outcome' => 'Yes',
+            'stake_amount' => 100,
+        ]);
+        $market = app(MarketService::class)->submitForReview($market, $creator);
+        $market = app(MarketService::class)->acceptChallenge($market, $challenger);
+
+        $this->expectException(\RuntimeException::class);
+        app(SettlementService::class)->publishMarketResult($market, 'Maybe', null);
+    }
+
+    public function test_matched_market_forbidden_to_outsider(): void
+    {
+        $creator = $this->createBettingUser('q');
+        $challenger = $this->createBettingUser('r');
+        $outsider = $this->createBettingUser('s');
+        $event = $this->createEvent();
+
+        $market = app(MarketService::class)->createDraft($creator, $event, [
+            'title' => 'Private test',
+            'format' => 'yes_no',
+            'creator_outcome' => 'Yes',
+            'stake_amount' => 100,
+        ]);
+        $market = app(MarketService::class)->submitForReview($market, $creator);
+        $market = app(MarketService::class)->acceptChallenge($market, $challenger);
+
+        $response = $this->actingAs($outsider)->get(route('betting.challenges.show', $market));
+        $response->assertForbidden();
+    }
+
+    public function test_settle_blocked_with_open_dispute(): void
+    {
+        $creator = $this->createBettingUser('t');
+        $challenger = $this->createBettingUser('u');
+        $event = $this->createEvent();
+
+        $market = app(MarketService::class)->createDraft($creator, $event, [
+            'title' => 'Dispute block',
+            'format' => 'yes_no',
+            'creator_outcome' => 'Yes',
+            'stake_amount' => 100,
+        ]);
+        $market = app(MarketService::class)->submitForReview($market, $creator);
+        $market = app(MarketService::class)->acceptChallenge($market, $challenger);
+
+        app(SettlementService::class)->publishMarketResult($market, 'Yes', null);
+        $market = $market->fresh();
+
+        app(SettlementService::class)->openDispute($market, $challenger, 'wrong_result', 'test');
+
+        $this->expectException(\RuntimeException::class);
+        app(SettlementService::class)->settleMarket($market->fresh());
+    }
+
+    public function test_advance_events_moves_matched_markets(): void
+    {
+        $creator = $this->createBettingUser('v');
+        $challenger = $this->createBettingUser('w');
+        $event = $this->createEvent();
+
+        $market = app(MarketService::class)->createDraft($creator, $event, [
+            'title' => 'Advance test',
+            'format' => 'yes_no',
+            'creator_outcome' => 'Yes',
+            'stake_amount' => 100,
+        ]);
+        $market = app(MarketService::class)->submitForReview($market, $creator);
+        $market = app(MarketService::class)->acceptChallenge($market, $challenger);
+
+        $event->start_at = now()->subMinute();
+        $event->save();
+
+        app(SettlementService::class)->advanceMarketsForEventStart($event);
+
+        $this->assertEquals(MarketStatus::PendingResult, $market->fresh()->status);
     }
 }

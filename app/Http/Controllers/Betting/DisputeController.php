@@ -11,6 +11,8 @@ class DisputeController extends Controller
 {
     public function store(Request $request, Market $market, SettlementService $settlementService)
     {
+        $this->authorize('dispute', $market);
+
         $validated = $request->validate([
             'reason_category' => 'required|string|max:64',
             'explanation' => 'nullable|string|max:2000',

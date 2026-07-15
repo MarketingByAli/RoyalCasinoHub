@@ -47,10 +47,16 @@ class ChallengeController extends Controller
             'stake_amount' => 'required|numeric|min:1|max:'.config('betting.max_stake_per_market'),
         ]);
 
-        $event = BettingEvent::findOrFail($validated['betting_event_id']);
+        $event = BettingEvent::approvedForBetting()
+            ->where('start_at', '>', now())
+            ->findOrFail($validated['betting_event_id']);
 
-        $market = $marketService->createDraft($request->user(), $event, $validated);
-        $market = $marketService->submitForReview($market, $request->user());
+        try {
+            $market = $marketService->createDraft($request->user(), $event, $validated);
+            $market = $marketService->submitForReview($market, $request->user());
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('betting.challenges.show', $market)
@@ -61,6 +67,8 @@ class ChallengeController extends Controller
 
     public function show(Market $market, PlayWalletService $walletService)
     {
+        $this->authorize('view', $market);
+
         $market->load(['event', 'creator.bettingProfile', 'challenger.bettingProfile', 'currentVersion', 'participants.user.bettingProfile']);
 
         $wallet = auth()->check() ? $walletService->getOrCreateWallet(auth()->user()) : null;

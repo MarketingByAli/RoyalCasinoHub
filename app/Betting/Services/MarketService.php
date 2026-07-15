@@ -27,6 +27,8 @@ class MarketService
      */
     public function createDraft(User $creator, BettingEvent $event, array $data): Market
     {
+        $this->assertEventEligible($event);
+
         $format = MarketFormat::from($data['format']);
         $outcomeOptions = $this->resolveOutcomeOptions($format, $data);
         $creatorOutcome = $data['creator_outcome'];
@@ -40,7 +42,7 @@ class MarketService
             throw new RuntimeException('Stake amount out of allowed range.');
         }
 
-        $this->assertBettingAllowed($creator, $stake);
+        $this->assertBettingAllowed($creator, $stake, requireAvailable: true);
 
         $review = $this->reviewService->review(
             $data['title'],
@@ -79,6 +81,8 @@ class MarketService
             throw new RuntimeException('Only draft markets can be submitted.');
         }
 
+        $this->assertBettingAllowed($creator, (float) $market->stake_amount, requireAvailable: true);
+
         if ($this->duplicateExists($market)) {
             throw new RuntimeException('A similar open challenge already exists for this event.');
         }
@@ -101,6 +105,10 @@ class MarketService
     {
         if ($market->status !== MarketStatus::PendingReview) {
             throw new RuntimeException('Market is not pending review.');
+        }
+
+        if ($this->duplicateExists($market)) {
+            throw new RuntimeException('A similar open challenge already exists for this event.');
         }
 
         $market = $this->stateMachine->transition($market, MarketStatus::Approved, $admin, 'admin_approved');
@@ -135,14 +143,27 @@ class MarketService
             throw new RuntimeException('This invitation has expired.');
         }
 
+        if ($market->betting_close_at && $market->betting_close_at->isPast()) {
+            throw new RuntimeException('Betting is closed for this challenge.');
+        }
+
+        $market->loadMissing('creator');
+        if ($challenger->isBlockedBy($market->creator) || $market->creator->isBlockedBy($challenger)) {
+            throw new RuntimeException('You cannot accept this challenge.');
+        }
+
         $stake = (float) $market->stake_amount;
-        $this->assertBettingAllowed($challenger, $stake);
+        $this->assertBettingAllowed($challenger, $stake, requireAvailable: true);
 
         return DB::transaction(function () use ($market, $challenger, $stake) {
             $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
 
             if ($market->status !== MarketStatus::Open) {
                 throw new RuntimeException('Challenge was already accepted.');
+            }
+
+            if ($market->betting_close_at && $market->betting_close_at->isPast()) {
+                throw new RuntimeException('Betting is closed for this challenge.');
             }
 
             $challengerOutcome = $market->challengerOutcome();
@@ -268,7 +289,18 @@ class MarketService
         }
     }
 
-    private function assertBettingAllowed(User $user, float $additionalStake): void
+    private function assertEventEligible(BettingEvent $event): void
+    {
+        if (! in_array($event->status, ['scheduled', 'in_progress'], true)) {
+            throw new RuntimeException('This event is not available for betting.');
+        }
+
+        if ($event->start_at && $event->start_at->isPast()) {
+            throw new RuntimeException('This event has already started.');
+        }
+    }
+
+    private function assertBettingAllowed(User $user, float $additionalStake, bool $requireAvailable = false): void
     {
         if (! $user->hasVerifiedEmail()) {
             throw new RuntimeException('Email verification required for betting.');
@@ -279,11 +311,18 @@ class MarketService
             throw new RuntimeException('Account not eligible for betting.');
         }
 
-        $openLiability = $this->walletService->openLiability($user);
-        $max = config('betting.max_open_liability_per_user', 20000);
+        $exposure = $this->walletService->totalExposure($user);
+        $max = (float) config('betting.max_open_liability_per_user', 20000);
 
-        if ($openLiability + $additionalStake > $max) {
+        if ($exposure + $additionalStake > $max) {
             throw new RuntimeException('Maximum exposure limit exceeded.');
+        }
+
+        if ($requireAvailable) {
+            $wallet = $this->walletService->getOrCreateWallet($user);
+            if (bccomp((string) $wallet->available, (string) $additionalStake, 2) < 0) {
+                throw new RuntimeException('Insufficient available balance for this stake.');
+            }
         }
     }
 

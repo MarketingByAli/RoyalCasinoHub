@@ -16,6 +16,8 @@ class MarketAdminController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        } elseif (! $request->has('status')) {
+            $query->where('status', 'pending_review');
         }
 
         $markets = $query->paginate(25);

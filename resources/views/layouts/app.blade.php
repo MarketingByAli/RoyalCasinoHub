@@ -100,7 +100,8 @@
                 <a href="{{ route('home') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Home</a>
                 <a href="{{ route('countries.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Countries</a>
                 <a href="{{ route('blog.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Blog</a>
-                <a href="{{ route('reviews.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Reviews</a>
+                    <a href="{{ route('reviews.index') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Reviews</a>
+                    <a href="{{ route('betting.dashboard') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Challenges</a>
                 @auth
                     @can('create', App\Models\Casino::class)
                         <a href="{{ route('casino-listings.create') }}" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-amber-500/10 hover:text-amber-400 transition-all">Add casino</a>

@@ -25,4 +25,14 @@ class LegalController extends Controller
             'noindex' => true,
         ]);
     }
+
+    public function bettingRules(Request $request)
+    {
+        return view('legal.betting-rules', [
+            'meta_title' => 'Betting Rules | RoyalCasinoHub',
+            'meta_description' => 'Play-money challenge betting rules for RoyalCasinoHub.',
+            'canonical' => url('/betting-rules'),
+            'noindex' => true,
+        ]);
+    }
 }

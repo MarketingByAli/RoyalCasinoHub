@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Betting;
 
+use App\Betting\Enums\MarketStatus;
 use App\Betting\Models\Market;
 use App\Http\Controllers\Controller;
 
@@ -13,7 +14,11 @@ class InviteController extends Controller
             ->with(['event', 'creator.bettingProfile', 'currentVersion'])
             ->firstOrFail();
 
-        if ($market->expires_at && $market->expires_at->isPast() && $market->status->value === 'open') {
+        if ($market->status !== MarketStatus::Open) {
+            return view('betting.invite.closed', compact('market'));
+        }
+
+        if ($market->expires_at && $market->expires_at->isPast()) {
             return view('betting.invite.expired', compact('market'));
         }
 

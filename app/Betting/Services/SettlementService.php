@@ -5,6 +5,7 @@ namespace App\Betting\Services;
 use App\Betting\Enums\MarketStatus;
 use App\Betting\Models\BettingEvent;
 use App\Betting\Models\Dispute;
+use App\Betting\Models\LedgerEntry;
 use App\Betting\Models\Market;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -20,28 +21,34 @@ class SettlementService
 
     public function publishEventResult(BettingEvent $event, string $winningOutcome, User $admin): BettingEvent
     {
-        $event->winning_outcome = $winningOutcome;
-        $event->result_published_at = now();
-        $event->status = 'completed';
-        $event->save();
+        return DB::transaction(function () use ($event, $winningOutcome, $admin) {
+            $event->winning_outcome = $winningOutcome;
+            $event->result_published_at = now();
+            $event->status = 'completed';
+            $event->save();
 
-        Market::query()
-            ->where('betting_event_id', $event->id)
-            ->whereIn('status', [
-                MarketStatus::FullyMatched,
-                MarketStatus::Locked,
-                MarketStatus::InProgress,
-                MarketStatus::PendingResult,
-            ])
-            ->each(function (Market $market) use ($winningOutcome, $admin) {
-                $this->publishMarketResult($market, $winningOutcome, $admin);
-            });
+            Market::query()
+                ->where('betting_event_id', $event->id)
+                ->whereIn('status', [
+                    MarketStatus::FullyMatched,
+                    MarketStatus::Locked,
+                    MarketStatus::InProgress,
+                    MarketStatus::PendingResult,
+                ])
+                ->each(function (Market $market) use ($winningOutcome, $admin) {
+                    $this->publishMarketResult($market, $winningOutcome, $admin);
+                });
 
-        return $event->fresh();
+            return $event->fresh();
+        });
     }
 
     public function publishMarketResult(Market $market, string $winningOutcome, ?User $admin = null): Market
     {
+        if (! in_array($winningOutcome, $market->outcome_options ?? [], true)) {
+            throw new RuntimeException('Winning outcome must be one of the market outcomes.');
+        }
+
         if (! $market->isMatched()) {
             throw new RuntimeException('Market must be matched before publishing result.');
         }
@@ -75,19 +82,23 @@ class SettlementService
 
     public function finalizeAfterDisputeWindow(Market $market): Market
     {
-        if ($market->status !== MarketStatus::DisputeWindow) {
-            throw new RuntimeException('Market is not in dispute window.');
-        }
+        return DB::transaction(function () use ($market) {
+            $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
 
-        if ($market->dispute_window_ends_at && $market->dispute_window_ends_at->isFuture()) {
-            throw new RuntimeException('Dispute window still open.');
-        }
+            if ($market->status !== MarketStatus::DisputeWindow) {
+                throw new RuntimeException('Market is not in dispute window.');
+            }
 
-        if ($market->disputes()->where('status', 'open')->exists()) {
-            return $this->stateMachine->transition($market, MarketStatus::UnderDispute, null, 'open_dispute_exists');
-        }
+            if ($market->dispute_window_ends_at && $market->dispute_window_ends_at->isFuture()) {
+                throw new RuntimeException('Dispute window still open.');
+            }
 
-        return $this->settleMarket($market);
+            if ($market->disputes()->where('status', 'open')->exists()) {
+                return $this->stateMachine->transition($market, MarketStatus::UnderDispute, null, 'open_dispute_exists');
+            }
+
+            return $this->settleMarket($market);
+        });
     }
 
     public function settleMarket(Market $market): Market
@@ -103,9 +114,17 @@ class SettlementService
                 return $market;
             }
 
+            if ($market->disputes()->where('status', 'open')->exists()) {
+                throw new RuntimeException('Cannot settle market with open disputes.');
+            }
+
             $winningOutcome = $market->winning_outcome;
             if (! $winningOutcome) {
                 throw new RuntimeException('No winning outcome set.');
+            }
+
+            if (! in_array($winningOutcome, $market->outcome_options ?? [], true)) {
+                return $this->voidMarket($market, null, 'invalid_winning_outcome');
             }
 
             $stake = (float) $market->stake_amount;
@@ -169,7 +188,8 @@ class SettlementService
             $stake = (float) $market->stake_amount;
 
             foreach ($market->participants()->with('user')->get() as $participant) {
-                if ($this->walletService->openLiability($participant->user) >= $stake) {
+                $role = $participant->role === 'creator' ? 'creator' : 'challenger';
+                if ($this->walletService->hasStakeLockForMarket($participant->user, $market, $role)) {
                     $this->walletService->voidRefund(
                         $participant->user,
                         $stake,
@@ -186,29 +206,53 @@ class SettlementService
 
     public function openDispute(Market $market, User $user, string $reasonCategory, ?string $explanation): Dispute
     {
-        if ($market->status !== MarketStatus::DisputeWindow) {
-            throw new RuntimeException('Disputes can only be opened during the dispute window.');
-        }
+        return DB::transaction(function () use ($market, $user, $reasonCategory, $explanation) {
+            $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
 
-        if (! $market->participants()->where('user_id', $user->id)->exists()) {
-            throw new RuntimeException('Only participants can dispute.');
-        }
+            if ($market->status !== MarketStatus::DisputeWindow) {
+                throw new RuntimeException('Disputes can only be opened during the dispute window.');
+            }
 
-        $dispute = Dispute::create([
-            'betting_market_id' => $market->id,
-            'user_id' => $user->id,
-            'reason_category' => $reasonCategory,
-            'explanation' => $explanation,
-            'status' => 'open',
-        ]);
+            if ($market->dispute_window_ends_at && $market->dispute_window_ends_at->isPast()) {
+                throw new RuntimeException('Dispute window has closed.');
+            }
 
-        $this->stateMachine->transition($market, MarketStatus::UnderDispute, $user, 'dispute_opened');
+            if (! $market->participants()->where('user_id', $user->id)->exists()) {
+                throw new RuntimeException('Only participants can dispute.');
+            }
 
-        return $dispute;
+            if ($market->disputes()->where('user_id', $user->id)->where('status', 'open')->exists()) {
+                throw new RuntimeException('You already have an open dispute on this market.');
+            }
+
+            $dispute = Dispute::create([
+                'betting_market_id' => $market->id,
+                'user_id' => $user->id,
+                'reason_category' => $reasonCategory,
+                'explanation' => $explanation,
+                'status' => 'open',
+            ]);
+
+            $this->stateMachine->transition($market, MarketStatus::UnderDispute, $user, 'dispute_opened');
+
+            foreach ($market->participants()->with('user')->get() as $participant) {
+                $this->notifications->notify($participant->user, 'dispute_opened', [
+                    'market_id' => $market->id,
+                    'market_title' => $market->title,
+                    'opened_by' => $user->bettingProfile?->username ?? $user->name,
+                ]);
+            }
+
+            return $dispute;
+        });
     }
 
     public function resolveDispute(Dispute $dispute, User $admin, string $resolution, ?string $note): Market
     {
+        if ($dispute->status !== 'open') {
+            throw new RuntimeException('Dispute is already resolved.');
+        }
+
         $dispute->status = 'resolved';
         $dispute->resolution = $resolution;
         $dispute->resolution_note = $note;
@@ -216,13 +260,23 @@ class SettlementService
         $dispute->resolved_at = now();
         $dispute->save();
 
-        $market = $dispute->market;
+        $market = $dispute->market->fresh();
 
-        return match ($resolution) {
+        $result = match ($resolution) {
             'confirm' => $this->settleMarket($market),
             'void' => $this->voidMarket($market, $admin, 'dispute_void'),
             default => throw new RuntimeException('Unknown resolution.'),
         };
+
+        foreach ($result->participants()->with('user')->get() as $participant) {
+            $this->notifications->notify($participant->user, 'dispute_resolved', [
+                'market_id' => $result->id,
+                'market_title' => $result->title,
+                'resolution' => $resolution,
+            ]);
+        }
+
+        return $result;
     }
 
     public function advanceMarketsForEventStart(BettingEvent $event): void

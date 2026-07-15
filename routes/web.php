@@ -78,6 +78,7 @@ Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name(
 
 Route::get('/terms', [LegalController::class, 'terms'])->name('terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
+Route::get('/betting-rules', [LegalController::class, 'bettingRules'])->name('betting-rules');
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/reviews/{review}/vote', [ReviewVoteController::class, 'store'])

@@ -27,7 +27,7 @@
 </div>
 <div class="space-y-3 text-sm text-gray-400 border-t border-amber-900/20 pt-4">
     <label class="flex gap-2"><input type="checkbox" name="accept_terms" value="1" required @checked(old('accept_terms')) class="rounded border-amber-800"> I accept the <a href="{{ route('terms') }}" class="text-amber-400 underline" target="_blank">Terms</a></label>
-    <label class="flex gap-2"><input type="checkbox" name="accept_gambling_rules" value="1" required @checked(old('accept_gambling_rules')) class="rounded border-amber-800"> I accept the betting rules</label>
+    <label class="flex gap-2"><input type="checkbox" name="accept_gambling_rules" value="1" required @checked(old('accept_gambling_rules')) class="rounded border-amber-800"> I accept the <a href="{{ route('betting-rules') }}" class="text-amber-400 underline" target="_blank">betting rules</a></label>
     <label class="flex gap-2"><input type="checkbox" name="accept_privacy" value="1" required @checked(old('accept_privacy')) class="rounded border-amber-800"> I accept the <a href="{{ route('privacy') }}" class="text-amber-400 underline" target="_blank">Privacy Policy</a></label>
     <label class="flex gap-2"><input type="checkbox" name="accept_responsible_gambling" value="1" required @checked(old('accept_responsible_gambling')) class="rounded border-amber-800"> I acknowledge responsible gambling information</label>
     <label class="flex gap-2"><input type="checkbox" name="accept_customer_funds" value="1" required @checked(old('accept_customer_funds')) class="rounded border-amber-800"> I understand play-money has no cash value (Stage 0)</label>

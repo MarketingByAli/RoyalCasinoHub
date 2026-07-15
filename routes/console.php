@@ -14,3 +14,4 @@ Schedule::command('digest:weekly')->weeklyOn(1, '8:00');
 Schedule::command('casinos:check-links --limit=200')->daily();
 Schedule::command('betting:expire-markets')->hourly();
 Schedule::command('betting:finalize-disputes')->everyFifteenMinutes();
+Schedule::command('betting:advance-events')->everyFiveMinutes();

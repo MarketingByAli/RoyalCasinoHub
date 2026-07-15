@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Betting;
 
+use App\Betting\Models\Market;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -11,7 +12,16 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $wallet = $user->bettingWallet;
-        $recentMarkets = $user->createdMarkets()->with('event')->latest()->limit(5)->get();
+
+        $recentMarkets = Market::query()
+            ->with('event')
+            ->where(function ($q) use ($user) {
+                $q->where('creator_id', $user->id)
+                    ->orWhere('challenger_id', $user->id);
+            })
+            ->latest()
+            ->limit(5)
+            ->get();
 
         return view('betting.dashboard', compact('wallet', 'recentMarkets'));
     }

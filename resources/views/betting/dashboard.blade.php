@@ -34,8 +34,9 @@
         @endforelse
     </div>
 
-    <div class="mt-8 flex gap-4">
+    <div class="mt-8 flex gap-4 flex-wrap">
         <a href="{{ route('betting.challenges.index') }}" class="text-amber-400 hover:underline">All my challenges</a>
+        <a href="{{ route('betting.notifications.index') }}" class="text-amber-400 hover:underline">Notifications</a>
         @if(auth()->user()->bettingProfile)
             <a href="{{ route('betting.profiles.show', auth()->user()->bettingProfile->username) }}" class="text-amber-400 hover:underline">My profile</a>
         @endif
