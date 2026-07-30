@@ -40,8 +40,11 @@ class BettingAlert extends Notification implements ShouldQueue
             'counter_offer_received' => 'Counter-offer received',
             'counter_offer_accepted' => 'Counter-offer accepted',
             'referral_bonus' => 'Referral bonus credited',
-            'faucet_claimed' => 'Daily faucet claimed',
+            'faucet_claimed' => 'Wallet credit received',
             'rg_limit_hit' => 'Stake limit reached',
+            'deposit_credited' => 'Deposit credited',
+            'withdrawal_paid' => 'Withdrawal paid',
+            'withdrawal_rejected' => 'Withdrawal rejected',
             default => 'Challenge update',
         };
 
@@ -70,8 +73,11 @@ class BettingAlert extends Notification implements ShouldQueue
             'counter_offer_received' => ($this->data['from'] ?? 'Someone').' proposed '.$this->data['proposed_stake'].' pts on "'.$this->data['market_title'].'"',
             'counter_offer_accepted' => 'Your counter-offer on "'.$this->data['market_title'].'" was accepted.',
             'referral_bonus' => 'You received a referral bonus of '.$this->data['amount'].' pts.',
-            'faucet_claimed' => 'You claimed '.$this->data['amount'].' faucet points.',
+            'faucet_claimed' => 'Your wallet was credited '.$this->data['amount'].' points.',
             'rg_limit_hit' => 'You hit your '.($this->data['limit'] ?? 'stake').' limit.',
+            'deposit_credited' => 'Your deposit of '.$this->data['amount'].' was credited.',
+            'withdrawal_paid' => 'Your withdrawal of '.$this->data['amount'].' ('.$this->data['coin'].') was paid.',
+            'withdrawal_rejected' => 'Your withdrawal of '.$this->data['amount'].' was rejected and funds returned.',
             default => 'Update for challenge: '.($this->data['market_title'] ?? ''),
         };
     }

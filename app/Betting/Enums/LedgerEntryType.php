@@ -16,4 +16,8 @@ enum LedgerEntryType: string
     case PlatformFee = 'platform_fee';
     case SettlementReversalCredit = 'settlement_reversal_credit';
     case SettlementReversalDebit = 'settlement_reversal_debit';
+    case Deposit = 'deposit';
+    case Withdrawal = 'withdrawal';
+    case WithdrawalHold = 'withdrawal_hold';
+    case WithdrawalRelease = 'withdrawal_release';
 }

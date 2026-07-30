@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\Betting\DisputeAdminController;
 use App\Http\Controllers\Admin\Betting\EventAdminController;
 use App\Http\Controllers\Admin\Betting\MarketAdminController;
 use App\Http\Controllers\Admin\Betting\UserReportAdminController;
+use App\Http\Controllers\Admin\Betting\DepositMethodAdminController;
+use App\Http\Controllers\Admin\Betting\FundingAdminController;
 use App\Http\Controllers\Admin\Betting\WalletAdminController;
 use App\Http\Controllers\Betting\ChallengeController;
 use App\Http\Controllers\Betting\DashboardController;
@@ -34,7 +36,8 @@ Route::prefix('challenges')->name('betting.')->middleware('betting.locale')->gro
             Route::get('/leaderboard', [LeaderboardController::class, 'weekly'])->name('leaderboard.weekly');
 
             Route::get('/wallet', [WalletController::class, 'show'])->name('wallet');
-            Route::post('/wallet/faucet', [WalletController::class, 'claimFaucet'])->middleware('throttle:5,1')->name('wallet.faucet');
+            Route::post('/wallet/withdraw', [WalletController::class, 'withdraw'])->middleware('throttle:10,1')->name('wallet.withdraw');
+            Route::post('/wallet/deposit-notice', [WalletController::class, 'notifyDeposit'])->middleware('throttle:10,1')->name('wallet.deposit-notice');
 
             Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
             Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
@@ -97,6 +100,19 @@ Route::middleware(['auth', 'admin', 'active', 'betting.locale'])->prefix('admin/
 
     Route::get('/wallets', [WalletAdminController::class, 'index'])->name('wallets.index');
     Route::post('/users/{user}/wallet-adjust', [WalletAdminController::class, 'adjust'])->name('wallets.adjust');
+
+    Route::get('/deposit-methods', [DepositMethodAdminController::class, 'index'])->name('deposit-methods.index');
+    Route::get('/deposit-methods/create', [DepositMethodAdminController::class, 'create'])->name('deposit-methods.create');
+    Route::post('/deposit-methods', [DepositMethodAdminController::class, 'store'])->name('deposit-methods.store');
+    Route::get('/deposit-methods/{depositMethod}/edit', [DepositMethodAdminController::class, 'edit'])->name('deposit-methods.edit');
+    Route::put('/deposit-methods/{depositMethod}', [DepositMethodAdminController::class, 'update'])->name('deposit-methods.update');
+    Route::delete('/deposit-methods/{depositMethod}', [DepositMethodAdminController::class, 'destroy'])->name('deposit-methods.destroy');
+
+    Route::get('/funding', [FundingAdminController::class, 'index'])->name('funding.index');
+    Route::post('/funding/withdrawals/{withdrawRequest}/approve', [FundingAdminController::class, 'approveWithdraw'])->name('funding.withdrawals.approve');
+    Route::post('/funding/withdrawals/{withdrawRequest}/reject', [FundingAdminController::class, 'rejectWithdraw'])->name('funding.withdrawals.reject');
+    Route::post('/funding/deposits/{depositNotice}/credit', [FundingAdminController::class, 'creditDeposit'])->name('funding.deposits.credit');
+    Route::post('/funding/deposits/{depositNotice}/reject', [FundingAdminController::class, 'rejectDeposit'])->name('funding.deposits.reject');
 
     Route::get('/users/{user}/account', [AccountAdminController::class, 'edit'])->name('accounts.edit');
     Route::put('/users/{user}/account', [AccountAdminController::class, 'update'])->name('accounts.update');

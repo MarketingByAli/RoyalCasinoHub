@@ -73,7 +73,7 @@ class NewsFetchingService
                     'url' => Str::limit($link, 2048),
                 ],
                 [
-                    'title' => Str::limit($title, 500),
+                    'title' => Str::limit($title, 255),
                     'source' => 'Google News',
                     'published_at' => $pubDate ? date('Y-m-d H:i:s', $pubDate) : null,
                 ]

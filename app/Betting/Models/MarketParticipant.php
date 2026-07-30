@@ -27,11 +27,30 @@ class MarketParticipant extends Model
     protected function casts(): array
     {
         return [
-            'status' => ParticipantStatus::class,
             'stake_amount' => 'decimal:2',
             'proposed_stake_amount' => 'decimal:2',
             'accepted_at' => 'datetime',
         ];
+    }
+
+    public function getStatusAttribute($value): ParticipantStatus
+    {
+        if ($value instanceof ParticipantStatus) {
+            return $value;
+        }
+
+        if ($value === null || $value === '') {
+            return ParticipantStatus::Active;
+        }
+
+        return ParticipantStatus::tryFrom((string) $value) ?? ParticipantStatus::Active;
+    }
+
+    public function setStatusAttribute($value): void
+    {
+        $this->attributes['status'] = $value instanceof ParticipantStatus
+            ? $value->value
+            : (string) ($value ?? ParticipantStatus::Active->value);
     }
 
     public function market(): BelongsTo
