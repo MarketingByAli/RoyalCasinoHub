@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-3xl mx-auto space-y-8" x-data="{ tab: 'overview' }">
+<div class="max-w-3xl mx-auto space-y-10">
     <div>
         <h1 class="text-3xl font-bold text-amber-400 font-serif">Wallet</h1>
         <p class="text-gray-500 text-sm mt-1">Available balance and crypto deposit / withdraw options.</p>
@@ -26,13 +26,13 @@
             </div>
         </dl>
         <div class="mt-6 flex flex-wrap gap-3">
-            <button type="button" @click="tab = 'deposit'" class="bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-5 py-2.5 rounded-xl">Add funds</button>
-            <button type="button" @click="tab = 'withdraw'" class="border border-amber-700 text-amber-400 hover:bg-amber-500/10 font-semibold px-5 py-2.5 rounded-xl">Withdraw</button>
-            <button type="button" @click="tab = 'overview'" class="text-gray-400 hover:text-white text-sm px-3 py-2">Activity</button>
+            <a href="#add-funds" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-5 py-2.5 rounded-xl">Add funds</a>
+            <a href="#withdraw" class="inline-block border border-amber-700 text-amber-400 hover:bg-amber-500/10 font-semibold px-5 py-2.5 rounded-xl">Withdraw</a>
+            <a href="#activity" class="inline-block text-gray-400 hover:text-white text-sm px-3 py-2">Activity</a>
         </div>
     </div>
 
-    <div x-show="tab === 'deposit'" x-cloak class="space-y-6">
+    <section id="add-funds" class="space-y-6 scroll-mt-24">
         <h2 class="text-xl font-semibold text-white">Add funds</h2>
         <p class="text-sm text-gray-400">Send crypto to one of the addresses below, then submit a deposit notice so we can credit your balance after confirmation.</p>
 
@@ -52,8 +52,9 @@
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">Deposit address</label>
                     <div class="flex gap-2">
-                        <input readonly value="{{ $method->address }}" class="flex-1 text-sm bg-slate-950 border border-amber-900/30 rounded-lg px-3 py-2 text-gray-200" onclick="this.select()">
-                        <button type="button" class="text-xs text-amber-400 border border-amber-800 rounded-lg px-3" onclick="navigator.clipboard.writeText(@js($method->address))">Copy</button>
+                        <input readonly value="{{ $method->address }}" id="deposit-address-{{ $method->id }}" class="flex-1 text-sm bg-slate-950 border border-amber-900/30 rounded-lg px-3 py-2 text-gray-200" onclick="this.select()">
+                        <button type="button" class="text-xs text-amber-400 border border-amber-800 rounded-lg px-3"
+                            onclick="navigator.clipboard.writeText(document.getElementById('deposit-address-{{ $method->id }}').value)">Copy</button>
                     </div>
                 </div>
             </div>
@@ -104,9 +105,9 @@
                 </ul>
             </div>
         @endif
-    </div>
+    </section>
 
-    <div x-show="tab === 'withdraw'" x-cloak class="space-y-6">
+    <section id="withdraw" class="space-y-6 scroll-mt-24">
         <h2 class="text-xl font-semibold text-white">Withdraw</h2>
         <p class="text-sm text-gray-400">Funds are reserved from your available balance until the withdrawal is paid or rejected.</p>
 
@@ -139,7 +140,7 @@
             </div>
             <div>
                 <label class="block text-sm text-gray-400 mb-1">Amount</label>
-                <input type="number" name="amount" value="{{ old('amount') }}" required min="1" step="1" max="{{ (int) $wallet->available }}" class="w-full bg-slate-950 border border-amber-900/30 rounded-lg px-3 py-2 text-white">
+                <input type="number" name="amount" value="{{ old('amount') }}" required min="1" step="1" max="{{ max(1, (int) $wallet->available) }}" class="w-full bg-slate-950 border border-amber-900/30 rounded-lg px-3 py-2 text-white">
             </div>
             <div>
                 <label class="block text-sm text-gray-400 mb-1">Note (optional)</label>
@@ -161,9 +162,9 @@
                 </ul>
             </div>
         @endif
-    </div>
+    </section>
 
-    <div x-show="tab === 'overview'" class="space-y-3">
+    <section id="activity" class="space-y-3 scroll-mt-24">
         <h2 class="font-semibold text-white mb-3">Recent activity</h2>
         <ul class="text-sm space-y-2">
             @forelse($entries as $entry)
@@ -177,6 +178,6 @@
                 <li class="text-gray-500">No transactions yet.</li>
             @endforelse
         </ul>
-    </div>
+    </section>
 </div>
 @endsection
