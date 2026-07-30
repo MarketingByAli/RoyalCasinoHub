@@ -29,8 +29,14 @@ class PlayWalletService
     {
         return DB::transaction(function () use ($user) {
             $wallet = $this->lockWalletForUser($user);
+            $idempotencyKey = 'starter_grant:'.$user->id;
 
-            if ($wallet->starter_grant_issued) {
+            if ($wallet->starter_grant_issued || LedgerEntry::where('idempotency_key', $idempotencyKey)->exists()) {
+                if (! $wallet->starter_grant_issued) {
+                    $wallet->starter_grant_issued = true;
+                    $wallet->save();
+                }
+
                 return false;
             }
 
@@ -43,7 +49,7 @@ class PlayWalletService
                 $wallet,
                 LedgerEntryType::Grant,
                 $amount,
-                'starter_grant:'.$user->id,
+                $idempotencyKey,
                 null,
                 null,
                 ['reason' => 'email_verified_starter_grant']

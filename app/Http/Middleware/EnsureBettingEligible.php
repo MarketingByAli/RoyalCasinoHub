@@ -25,11 +25,28 @@ class EnsureBettingEligible
         // Self-heal accounts stuck on unverified after email was already verified
         // (e.g. onboarding cached a null bettingProfile before markEmailVerified ran).
         if ($user->bettingProfile->account_state === AccountState::Unverified) {
-            app(UserProfileService::class)->markEmailVerified($user);
+            try {
+                app(UserProfileService::class)->markEmailVerified($user);
+            } catch (\Throwable $e) {
+                report($e);
+
+                // Still unblock access if the grant/ledger write fails.
+                $profile = $user->bettingProfile()->first();
+                if ($profile && $profile->account_state === AccountState::Unverified) {
+                    $profile->account_state = AccountState::PlayOnly;
+                    $profile->save();
+                }
+            }
+
             $user->unsetRelation('bettingProfile');
         }
 
-        if (! in_array($user->bettingProfile->account_state->value, ['play_only', 'verified'], true)) {
+        $accountState = $user->bettingProfile?->account_state;
+        $accountStateValue = $accountState instanceof AccountState
+            ? $accountState->value
+            : (string) $accountState;
+
+        if (! in_array($accountStateValue, ['play_only', 'verified'], true)) {
             abort(403, 'Your account is not eligible for betting.');
         }
 
