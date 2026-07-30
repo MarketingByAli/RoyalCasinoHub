@@ -516,4 +516,59 @@ class BettingFlowTest extends TestCase
 
         $this->assertEquals(10050, (float) $user->bettingWallet->fresh()->available);
     }
+
+    public function test_verified_user_onboarding_sets_play_only_despite_cached_null_profile(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'onboard@test.com',
+            'email_verified_at' => now(),
+        ]);
+
+        // Mimic OnboardingController::store accessing bettingProfile before create.
+        $this->assertNull($user->bettingProfile);
+
+        $this->actingAs($user)
+            ->post(route('betting.onboarding.store'), [
+                'username' => 'onboarduser',
+                'country' => 'ES',
+                'language' => 'en',
+                'date_of_birth' => now()->subYears(25)->format('Y-m-d'),
+                'accept_terms' => '1',
+                'accept_gambling_rules' => '1',
+                'accept_privacy' => '1',
+                'accept_responsible_gambling' => '1',
+                'accept_customer_funds' => '1',
+            ])
+            ->assertRedirect(route('betting.dashboard'));
+
+        $this->assertEquals(AccountState::PlayOnly, $user->fresh()->bettingProfile->account_state);
+        $this->assertEquals(config('betting.starter_points'), (float) $user->fresh()->bettingWallet->available);
+    }
+
+    public function test_create_challenge_self_heals_unverified_profile_when_email_verified(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'stuck@test.com',
+            'email_verified_at' => now(),
+        ]);
+
+        app(UserProfileService::class)->createForUser($user, [
+            'username' => 'stuckuser',
+            'country' => 'ES',
+            'language' => 'en',
+            'date_of_birth' => now()->subYears(25)->format('Y-m-d'),
+            'accept_gambling_rules' => true,
+            'accept_privacy' => true,
+            'accept_responsible_gambling' => true,
+            'accept_customer_funds' => true,
+        ]);
+
+        $this->assertEquals(AccountState::Unverified, $user->fresh()->bettingProfile->account_state);
+
+        $this->actingAs($user->fresh())
+            ->get(route('betting.challenges.create'))
+            ->assertOk();
+
+        $this->assertEquals(AccountState::PlayOnly, $user->fresh()->bettingProfile->account_state);
+    }
 }

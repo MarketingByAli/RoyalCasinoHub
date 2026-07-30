@@ -42,13 +42,17 @@ class UserProfileService
 
     public function markEmailVerified(User $user): void
     {
+        // Reload — callers often check bettingProfile first, which caches null.
+        $user->unsetRelation('bettingProfile');
         $profile = $user->bettingProfile;
         if (! $profile) {
             return;
         }
 
-        $profile->account_state = AccountState::PlayOnly;
-        $profile->save();
+        if ($profile->account_state !== AccountState::PlayOnly && $profile->account_state !== AccountState::Verified) {
+            $profile->account_state = AccountState::PlayOnly;
+            $profile->save();
+        }
 
         $this->walletService->grantStarterPoints($user);
     }
