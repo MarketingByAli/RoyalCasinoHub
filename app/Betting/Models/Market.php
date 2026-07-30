@@ -23,6 +23,8 @@ class Market extends Model
         'outcome_options',
         'creator_outcome',
         'stake_amount',
+        'participant_cap',
+        'min_participants',
         'status',
         'visibility',
         'invite_token',
@@ -44,6 +46,8 @@ class Market extends Model
             'format' => MarketFormat::class,
             'outcome_options' => 'array',
             'stake_amount' => 'decimal:2',
+            'participant_cap' => 'integer',
+            'min_participants' => 'integer',
             'status' => MarketStatus::class,
             'platform_fee_percent' => 'decimal:2',
             'betting_close_at' => 'datetime',
@@ -112,5 +116,20 @@ class Market extends Model
             MarketStatus::UnderDispute,
             MarketStatus::Settled,
         ], true);
+    }
+
+    public function activeParticipants(): HasMany
+    {
+        return $this->participants()->where('status', 'active');
+    }
+
+    public function isPool(): bool
+    {
+        return (int) $this->participant_cap > 2;
+    }
+
+    public function isPublic(): bool
+    {
+        return $this->visibility === 'public';
     }
 }

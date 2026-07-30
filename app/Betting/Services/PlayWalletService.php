@@ -272,16 +272,40 @@ class PlayWalletService
         return (float) $wallet->locked + $this->pendingOpenExposure($user);
     }
 
-    public function hasStakeLockForMarket(User $user, Market $market, string $role): bool
+    public function stakeLockKey(Market $market, User $user): string
     {
+        return 'stake_lock:market:'.$market->id.':user:'.$user->id;
+    }
+
+    public function stakeReleaseKey(Market $market, User $user): string
+    {
+        return 'stake_release:market:'.$market->id.':user:'.$user->id;
+    }
+
+    /**
+     * Dual-read: user-scoped key preferred, legacy role keys still recognized.
+     */
+    public function hasStakeLockForMarket(User $user, Market $market, ?string $legacyRole = null): bool
+    {
+        $keys = [$this->stakeLockKey($market, $user)];
+
+        if ($legacyRole) {
+            $keys[] = 'stake_lock:market:'.$market->id.':'.$legacyRole;
+        } else {
+            $keys[] = 'stake_lock:market:'.$market->id.':creator';
+            $keys[] = 'stake_lock:market:'.$market->id.':challenger';
+        }
+
         return LedgerEntry::query()
             ->whereHas('wallet', fn ($q) => $q->where('user_id', $user->id))
-            ->where('idempotency_key', 'stake_lock:market:'.$market->id.':'.$role)
+            ->whereIn('idempotency_key', $keys)
             ->exists();
     }
 
     public function hasActiveCreatorReserve(Market $market): bool
     {
+        $market->loadMissing('creator');
+
         if (! $this->hasStakeLockForMarket($market->creator, $market, 'creator')) {
             return false;
         }
@@ -289,12 +313,93 @@ class PlayWalletService
         return ! LedgerEntry::query()
             ->whereHas('wallet', fn ($q) => $q->where('user_id', $market->creator_id))
             ->whereIn('idempotency_key', [
+                $this->stakeReleaseKey($market, $market->creator),
                 'stake_release:market:'.$market->id.':creator',
                 'void_refund:market:'.$market->id.':user:'.$market->creator_id,
                 'settle_debit:market:'.$market->id.':user:'.$market->creator_id,
                 'settle_credit:market:'.$market->id.':user:'.$market->creator_id,
             ])
             ->exists();
+    }
+
+    public function creditAvailable(
+        User $user,
+        float $amount,
+        LedgerEntryType $type,
+        string $idempotencyKey,
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        array $metadata = []
+    ): Wallet {
+        if ($amount <= 0) {
+            throw new RuntimeException('Credit amount must be positive.');
+        }
+
+        return DB::transaction(function () use ($user, $amount, $type, $idempotencyKey, $referenceType, $referenceId, $metadata) {
+            if (LedgerEntry::where('idempotency_key', $idempotencyKey)->exists()) {
+                return $this->getOrCreateWallet($user);
+            }
+
+            $wallet = $this->lockWalletForUser($user);
+            $wallet->available = bcadd((string) $wallet->available, (string) $amount, 2);
+            $wallet->save();
+
+            $this->recordEntry($wallet, $type, $amount, $idempotencyKey, $referenceType, $referenceId, $metadata);
+
+            return $wallet->fresh();
+        });
+    }
+
+    public function debitAvailable(
+        User $user,
+        float $amount,
+        LedgerEntryType $type,
+        string $idempotencyKey,
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        array $metadata = []
+    ): Wallet {
+        if ($amount <= 0) {
+            throw new RuntimeException('Debit amount must be positive.');
+        }
+
+        return DB::transaction(function () use ($user, $amount, $type, $idempotencyKey, $referenceType, $referenceId, $metadata) {
+            if (LedgerEntry::where('idempotency_key', $idempotencyKey)->exists()) {
+                return $this->getOrCreateWallet($user);
+            }
+
+            $wallet = $this->lockWalletForUser($user);
+
+            if (bccomp((string) $wallet->available, (string) $amount, 2) < 0) {
+                throw new RuntimeException('Insufficient available balance.');
+            }
+
+            $wallet->available = bcsub((string) $wallet->available, (string) $amount, 2);
+            $wallet->save();
+
+            $this->recordEntry($wallet, $type, $amount, $idempotencyKey, $referenceType, $referenceId, $metadata);
+
+            return $wallet->fresh();
+        });
+    }
+
+    /**
+     * Last ledger snapshot for reconciliation against wallet row.
+     *
+     * @return array{available: float, locked: float}|null
+     */
+    public function ledgerSnapshotBalances(Wallet $wallet): ?array
+    {
+        $entry = LedgerEntry::where('wallet_id', $wallet->id)->orderByDesc('id')->first();
+
+        if (! $entry) {
+            return ['available' => 0.0, 'locked' => 0.0];
+        }
+
+        return [
+            'available' => (float) $entry->balance_after_available,
+            'locked' => (float) $entry->balance_after_locked,
+        ];
     }
 
     private function lockWalletForUser(User $user): Wallet

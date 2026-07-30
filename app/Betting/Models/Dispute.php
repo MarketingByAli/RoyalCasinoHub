@@ -5,6 +5,7 @@ namespace App\Betting\Models;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Dispute extends Model
 {
@@ -42,5 +43,10 @@ class Dispute extends Model
     public function resolver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(DisputeAttachment::class, 'betting_dispute_id');
     }
 }

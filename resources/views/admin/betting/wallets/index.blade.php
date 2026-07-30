@@ -24,6 +24,17 @@
         <input name="confirm_username" value="{{ old('confirm_username') }}" required class="w-full bg-slate-800 border border-amber-900/30 rounded px-3 py-2" placeholder="Must match the target user">
     </div>
     <div><label class="block text-sm text-gray-400 mb-1">Amount (+/-)</label><input name="amount" type="number" step="1" value="{{ old('amount') }}" required class="w-full bg-slate-800 border border-amber-900/30 rounded px-3 py-2"></div>
+    <div>
+        <label class="block text-sm text-gray-400 mb-1">Reason code</label>
+        <select name="reason_code" required class="w-full bg-slate-800 border border-amber-900/30 rounded px-3 py-2">
+            <option value="goodwill">goodwill</option>
+            <option value="correction">correction</option>
+            <option value="promotion">promotion</option>
+            <option value="dispute_adjustment">dispute_adjustment</option>
+            <option value="other">other</option>
+        </select>
+    </div>
+    <div><label class="block text-sm text-gray-400 mb-1">Market ID (optional)</label><input name="market_id" type="number" value="{{ old('market_id') }}" class="w-full bg-slate-800 border border-amber-900/30 rounded px-3 py-2"></div>
     <div><label class="block text-sm text-gray-400 mb-1">Reason</label><input name="reason" value="{{ old('reason') }}" required class="w-full bg-slate-800 border border-amber-900/30 rounded px-3 py-2"></div>
     <div><label class="block text-sm text-gray-400 mb-1">Confirm reason</label><input name="confirm_reason" value="{{ old('confirm_reason') }}" required class="w-full bg-slate-800 border border-amber-900/30 rounded px-3 py-2"></div>
     <button type="submit" class="bg-amber-500 text-amber-950 px-4 py-2 rounded font-semibold">Apply adjustment</button>

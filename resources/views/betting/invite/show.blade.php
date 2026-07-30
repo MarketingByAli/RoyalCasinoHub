@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $meta_title = $market->title.' | Challenge invite';
+    $meta_description = 'Join this play-money challenge on '.config('app.name').'. Stake '.$market->stake_amount.' points.';
+@endphp
 <div class="max-w-2xl mx-auto text-center py-12">
     <h1 class="text-2xl font-bold text-amber-400 mb-4">You're invited to a challenge</h1>
     <p class="text-gray-400 mb-6">{{ $market->creator->bettingProfile?->display_name ?? $market->creator->name }} wants to bet on:</p>
@@ -9,15 +13,16 @@
         <p class="text-sm text-gray-500 mt-1">{{ $market->event?->title }}</p>
         <p class="mt-4 text-sm">Stake: <span class="text-amber-400">{{ number_format($market->stake_amount, 0) }} play points each</span></p>
         <p class="text-sm">Creator's pick: {{ $market->creator_outcome }}</p>
+        <p class="text-sm text-gray-500 mt-2">{{ $market->participant_cap }} seats · {{ $market->status->value }}</p>
     </div>
     @auth
         @if(auth()->user()->bettingProfile)
-            <a href="{{ route('betting.challenges.show', [$market, 'invite_token' => $market->invite_token]) }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl">Review & accept</a>
+            <a href="{{ route('betting.challenges.show', [$market, 'invite_token' => $market->invite_token]) }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl">Review & join</a>
         @else
             <a href="{{ route('betting.onboarding') }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl">Complete profile first</a>
         @endif
     @else
-        <a href="{{ route('register') }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl mr-3">Register</a>
+        <a href="{{ route('register') }}" class="inline-block bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-6 py-3 rounded-xl mr-3">Register to join</a>
         <a href="{{ route('login') }}" class="inline-block border border-amber-700 text-amber-400 px-6 py-3 rounded-xl">Log in</a>
     @endauth
 </div>

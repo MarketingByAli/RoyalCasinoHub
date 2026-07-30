@@ -14,7 +14,7 @@ class InviteController extends Controller
             ->with(['event', 'creator.bettingProfile', 'currentVersion'])
             ->firstOrFail();
 
-        if ($market->status !== MarketStatus::Open) {
+        if (! in_array($market->status, [MarketStatus::Open, MarketStatus::PartiallyMatched], true)) {
             return view('betting.invite.closed', compact('market'));
         }
 

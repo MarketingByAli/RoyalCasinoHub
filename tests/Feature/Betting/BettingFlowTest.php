@@ -384,7 +384,7 @@ class BettingFlowTest extends TestCase
         $this->assertEquals(2, Dispute::where('betting_market_id', $market->id)->where('status', 'resolved')->count());
     }
 
-    public function test_event_result_rejects_incompatible_market_outcomes(): void
+    public function test_event_result_partially_publishes_compatible_markets(): void
     {
         $creator = $this->createBettingUser('ev1');
         $challenger = $this->createBettingUser('ev2');
@@ -410,8 +410,10 @@ class BettingFlowTest extends TestCase
         $team = app(MarketService::class)->submitForReview($team, $challenger);
         $this->accept($team, $creator);
 
-        $this->expectException(\RuntimeException::class);
-        app(SettlementService::class)->publishEventResult($event, 'Yes', $admin);
+        $result = app(SettlementService::class)->publishEventResult($event, 'Yes', $admin);
+
+        $this->assertContains($yesNo->id, $result['published']);
+        $this->assertArrayHasKey($team->id, $result['failed']);
     }
 
     public function test_post_match_cancelled_transition_forbidden(): void
@@ -498,6 +500,7 @@ class BettingFlowTest extends TestCase
             ->post(route('admin.betting.wallets.adjust', $user), [
                 'amount' => 50,
                 'reason' => 'test credit',
+                'reason_code' => 'goodwill',
                 'confirm_reason' => 'test credit',
                 'confirm_username' => 'playerwadj',
                 'idempotency_key' => $key,
@@ -508,6 +511,7 @@ class BettingFlowTest extends TestCase
             ->post(route('admin.betting.wallets.adjust', $user), [
                 'amount' => 50,
                 'reason' => 'test credit',
+                'reason_code' => 'goodwill',
                 'confirm_reason' => 'test credit',
                 'confirm_username' => 'playerwadj',
                 'idempotency_key' => $key,

@@ -18,7 +18,7 @@ class ExpireOpenMarkets extends Command
         $count = 0;
 
         Market::query()
-            ->where('status', MarketStatus::Open)
+            ->whereIn('status', [MarketStatus::Open, MarketStatus::PartiallyMatched])
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
             ->each(function (Market $market) use ($marketService, &$count) {
@@ -26,7 +26,7 @@ class ExpireOpenMarkets extends Command
                 $count++;
             });
 
-        $this->info("Expired {$count} open markets.");
+        $this->info("Expired {$count} open/partial markets.");
 
         return self::SUCCESS;
     }

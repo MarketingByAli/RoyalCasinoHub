@@ -74,11 +74,27 @@ class EventAdminController extends Controller
         ]);
 
         try {
-            $settlementService->publishEventResult($event, $validated['winning_outcome'], auth()->user());
+            $result = $settlementService->publishEventResult($event, $validated['winning_outcome'], auth()->user());
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Result published for all matched markets on this event.');
+        $message = count($result['published']).' market(s) published.';
+        if ($result['failed'] !== []) {
+            $message .= ' Failed: '.collect($result['failed'])->map(fn ($reason, $id) => "#{$id} ({$reason})")->implode(', ');
+        }
+
+        return back()->with('success', $message);
+    }
+
+    public function voidAll(Request $request, BettingEvent $event, \App\Betting\Services\SettlementService $settlementService)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $count = $settlementService->voidAllMarketsForEvent($event, auth()->user(), $validated['reason']);
+
+        return back()->with('success', "Voided/expired {$count} market(s) for this event.");
     }
 }

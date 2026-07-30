@@ -2,7 +2,9 @@
 
 namespace App\Betting\Services;
 
+use App\Betting\Enums\LedgerEntryType;
 use App\Betting\Enums\MarketStatus;
+use App\Betting\Enums\ParticipantStatus;
 use App\Betting\Models\BettingEvent;
 use App\Betting\Models\Dispute;
 use App\Betting\Models\Market;
@@ -18,7 +20,10 @@ class SettlementService
         private BettingNotificationService $notifications,
     ) {}
 
-    public function publishEventResult(BettingEvent $event, string $winningOutcome, User $admin): BettingEvent
+    /**
+     * @return array{event: BettingEvent, published: list<int>, failed: array<int, string>}
+     */
+    public function publishEventResult(BettingEvent $event, string $winningOutcome, User $admin): array
     {
         return DB::transaction(function () use ($event, $winningOutcome, $admin) {
             $markets = Market::query()
@@ -32,16 +37,21 @@ class SettlementService
                 ->lockForUpdate()
                 ->get();
 
-            $incompatible = $markets->filter(
-                fn (Market $market) => ! in_array($winningOutcome, $market->outcome_options ?? [], true)
-            );
+            $published = [];
+            $failed = [];
 
-            if ($incompatible->isNotEmpty()) {
-                $ids = $incompatible->pluck('id')->implode(', ');
+            foreach ($markets as $market) {
+                if (! in_array($winningOutcome, $market->outcome_options ?? [], true)) {
+                    $failed[$market->id] = 'incompatible_outcome';
+                    continue;
+                }
 
-                throw new RuntimeException(
-                    "Winning outcome is not valid for market(s): {$ids}. Publish results per market instead."
-                );
+                try {
+                    $this->publishMarketResult($market, $winningOutcome, $admin);
+                    $published[] = $market->id;
+                } catch (\Throwable $e) {
+                    $failed[$market->id] = $e->getMessage();
+                }
             }
 
             $event->winning_outcome = $winningOutcome;
@@ -49,12 +59,51 @@ class SettlementService
             $event->status = 'completed';
             $event->save();
 
-            foreach ($markets as $market) {
-                $this->publishMarketResult($market, $winningOutcome, $admin);
-            }
-
-            return $event->fresh();
+            return [
+                'event' => $event->fresh(),
+                'published' => $published,
+                'failed' => $failed,
+            ];
         });
+    }
+
+    public function voidAllMarketsForEvent(BettingEvent $event, User $admin, string $reason): int
+    {
+        $count = 0;
+        $markets = Market::query()
+            ->where('betting_event_id', $event->id)
+            ->whereIn('status', [
+                MarketStatus::Open,
+                MarketStatus::PartiallyMatched,
+                MarketStatus::FullyMatched,
+                MarketStatus::Locked,
+                MarketStatus::InProgress,
+                MarketStatus::PendingResult,
+                MarketStatus::ResultPublished,
+                MarketStatus::DisputeWindow,
+                MarketStatus::UnderDispute,
+            ])
+            ->get();
+
+        foreach ($markets as $market) {
+            try {
+                if (in_array($market->status, [MarketStatus::Open, MarketStatus::PartiallyMatched], true)) {
+                    // Release creator reserve then void via cancel path for open.
+                    app(MarketService::class)->expireOpenMarket($market);
+                    $count++;
+                    continue;
+                }
+                $this->voidMarket($market, $admin, $reason);
+                $count++;
+            } catch (\Throwable) {
+                // continue
+            }
+        }
+
+        $event->status = 'cancelled';
+        $event->save();
+
+        return $count;
     }
 
     public function publishMarketResult(Market $market, string $winningOutcome, ?User $admin = null): Market
@@ -182,8 +231,10 @@ class SettlementService
                 return $this->voidMarket($market, null, 'invalid_winning_outcome');
             }
 
-            $stake = (float) $market->stake_amount;
-            $participants = $market->participants()->with('user')->get();
+            $participants = $market->participants()
+                ->with('user')
+                ->where('status', ParticipantStatus::Active)
+                ->get();
 
             $winners = $participants->where('outcome', $winningOutcome);
             $losers = $participants->where('outcome', '!=', $winningOutcome);
@@ -193,24 +244,33 @@ class SettlementService
             }
 
             foreach ($losers as $loser) {
+                $loserStake = (float) $loser->stake_amount;
                 $this->walletService->settleLoser(
                     $loser->user,
-                    $stake,
+                    $loserStake,
                     Market::class,
                     $market->id,
                     'settle_debit:market:'.$market->id.':user:'.$loser->user_id
                 );
             }
 
-            $pot = $stake * $losers->count();
+            $pot = (float) $losers->sum(fn ($p) => (float) $p->stake_amount);
+            $feePercent = (float) $market->platform_fee_percent;
+            $fee = 0.0;
+            if ($feePercent > 0 && $pot > 0) {
+                $fee = (float) bcdiv(bcmul((string) $pot, (string) $feePercent, 4), '100', 2);
+                $this->creditHouseFee($market, $fee);
+                $pot = (float) bcsub((string) $pot, (string) $fee, 2);
+            }
 
             foreach ($winners as $winner) {
+                $winnerStake = (float) $winner->stake_amount;
                 $share = $pot / max(1, $winners->count());
-                $totalPayout = bcadd((string) $share, (string) $stake, 2);
+                $totalPayout = bcadd((string) $share, (string) $winnerStake, 2);
 
                 $this->walletService->settleWinner(
                     $winner->user,
-                    $stake,
+                    $winnerStake,
                     (float) $totalPayout,
                     Market::class,
                     $market->id,
@@ -236,6 +296,33 @@ class SettlementService
         });
     }
 
+    private function creditHouseFee(Market $market, float $fee): void
+    {
+        if ($fee <= 0) {
+            return;
+        }
+
+        $houseId = config('betting.house_user_id');
+        if (! $houseId) {
+            return;
+        }
+
+        $house = User::find($houseId);
+        if (! $house) {
+            return;
+        }
+
+        $this->walletService->creditAvailable(
+            $house,
+            $fee,
+            LedgerEntryType::PlatformFee,
+            'fee:market:'.$market->id,
+            Market::class,
+            $market->id,
+            ['platform_fee_percent' => (float) $market->platform_fee_percent]
+        );
+    }
+
     public function voidMarket(Market $market, ?User $admin, string $reason): Market
     {
         return DB::transaction(function () use ($market, $admin, $reason) {
@@ -245,11 +332,15 @@ class SettlementService
             $this->closeOpenDisputes($market, $admin, 'void', $reason);
 
             foreach ($market->participants()->with('user')->get() as $participant) {
-                $role = $participant->role === 'creator' ? 'creator' : 'challenger';
-                if ($this->walletService->hasStakeLockForMarket($participant->user, $market, $role)) {
+                if ($participant->status === ParticipantStatus::Withdrawn) {
+                    continue;
+                }
+
+                $legacyRole = $participant->role === 'creator' ? 'creator' : 'challenger';
+                if ($this->walletService->hasStakeLockForMarket($participant->user, $market, $legacyRole)) {
                     $this->walletService->voidRefund(
                         $participant->user,
-                        $stake,
+                        (float) $participant->stake_amount,
                         Market::class,
                         $market->id,
                         'void_refund:market:'.$market->id.':user:'.$participant->user_id

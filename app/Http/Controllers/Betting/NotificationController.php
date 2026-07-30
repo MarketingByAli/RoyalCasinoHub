@@ -17,6 +17,15 @@ class NotificationController extends Controller
         return view('betting.notifications.index', compact('notifications'));
     }
 
+    public function unreadCount(Request $request)
+    {
+        $count = BettingNotification::where('user_id', $request->user()->id)
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
+
     public function markRead(Request $request, BettingNotification $notification)
     {
         if ($notification->user_id !== $request->user()->id) {
@@ -34,6 +43,6 @@ class NotificationController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        return back()->with('success', 'All notifications marked read.');
+        return back()->with('success', __('betting.notifications_marked_read'));
     }
 }

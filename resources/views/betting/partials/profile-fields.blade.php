@@ -12,13 +12,21 @@
             class="w-full bg-slate-950/60 border border-amber-900/35 rounded-xl px-4 py-2.5 text-white uppercase">
     </div>
     <div class="space-y-2">
-        <label class="block text-sm font-medium text-gray-300">Language</label>
+        <label class="block text-sm font-medium text-gray-300">{{ __('betting.language') }}</label>
         <select name="language" class="w-full bg-slate-950/60 border border-amber-900/35 rounded-xl px-4 py-2.5 text-white">
-            <option value="en" @selected(old('language', 'en') === 'en')>English</option>
-            <option value="es" @selected(old('language') === 'es')>Español</option>
+            <option value="en" selected>English</option>
         </select>
     </div>
 </div>
+@if(!empty($referralCode) || old('referral_code'))
+<div class="space-y-2">
+    <label class="block text-sm font-medium text-gray-300">{{ __('betting.referral_code') }}</label>
+    <input type="text" name="referral_code" value="{{ old('referral_code', $referralCode ?? '') }}" maxlength="32"
+        class="w-full bg-slate-950/60 border border-amber-900/35 rounded-xl px-4 py-2.5 text-white uppercase">
+</div>
+@else
+<input type="hidden" name="referral_code" value="{{ old('referral_code', '') }}">
+@endif
 <div class="space-y-2">
     <label class="block text-sm font-medium text-gray-300">Date of birth</label>
     <input type="date" name="date_of_birth" value="{{ old('date_of_birth') }}" required max="{{ now()->subYears($minimumAge)->format('Y-m-d') }}"

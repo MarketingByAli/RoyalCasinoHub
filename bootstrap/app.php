@@ -5,6 +5,7 @@ use App\Http\Middleware\CasinoOwnerMiddleware;
 use App\Http\Middleware\EnsureBettingEligible;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\RedirectOldUrls;
+use App\Http\Middleware\SetBettingLocale;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => AdminMiddleware::class,
             'betting.eligible' => EnsureBettingEligible::class,
+            'betting.locale' => SetBettingLocale::class,
             'casino.owner' => CasinoOwnerMiddleware::class,
             'redirect.old' => RedirectOldUrls::class,
             'verified' => EnsureEmailIsVerified::class,

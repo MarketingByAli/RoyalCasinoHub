@@ -24,7 +24,23 @@
             <form method="POST" action="{{ route('admin.betting.markets.approve', $market) }}">@csrf<button class="bg-emerald-600 text-white px-3 py-1 rounded text-sm">Approve</button></form>
             <form method="POST" action="{{ route('admin.betting.markets.reject', $market) }}" class="space-y-2">@csrf<input name="reason" required placeholder="Rejection reason" class="w-full bg-slate-800 border rounded px-2 py-1 text-sm"><button class="text-red-400 text-sm">Reject</button></form>
         @endif
-        <form method="POST" action="{{ route('admin.betting.markets.publish-result', $market) }}" class="flex gap-2">@csrf<input name="winning_outcome" placeholder="Outcome" class="bg-slate-800 border rounded px-2 py-1 text-sm flex-1"><button class="text-amber-400 text-sm">Publish result</button></form>
+        <form method="POST" action="{{ route('admin.betting.markets.publish-result', $market) }}" class="flex gap-2 items-center">
+            @csrf
+            <select name="winning_outcome" required class="bg-slate-800 border rounded px-2 py-1 text-sm flex-1">
+                @foreach($market->outcome_options ?? [] as $option)
+                    <option value="{{ $option }}">{{ $option }}</option>
+                @endforeach
+            </select>
+            <button class="text-amber-400 text-sm">Publish result</button>
+        </form>
+        @if($market->status->value === 'settled')
+            <form method="POST" action="{{ route('admin.betting.markets.reverse', $market) }}" class="space-y-2 border-t border-amber-900/20 pt-2">
+                @csrf
+                <input name="reason" required placeholder="Reversal reason" class="w-full bg-slate-800 border rounded px-2 py-1 text-sm">
+                <label class="flex items-center gap-2 text-xs text-gray-400"><input type="checkbox" name="void_after" value="1"> Void after reverse</label>
+                <button class="text-red-400 text-sm">Reverse settlement</button>
+            </form>
+        @endif
         <form method="POST" action="{{ route('admin.betting.markets.settle', $market) }}" class="space-y-2 border-t border-amber-900/20 pt-2">
             @csrf
             @if($windowOpen)

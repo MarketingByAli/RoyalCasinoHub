@@ -17,9 +17,10 @@ class MarketService
 {
     public function __construct(
         private MarketStateMachine $stateMachine,
-        private MarketReviewService $reviewService,
+        private MarketModerationService $reviewService,
         private PlayWalletService $walletService,
         private BettingNotificationService $notifications,
+        private ResponsibleGamblingService $rg,
     ) {}
 
     /**
@@ -47,8 +48,13 @@ class MarketService
         $review = $this->reviewService->review(
             $data['title'],
             $data['description'] ?? '',
-            $outcomeOptions
+            $outcomeOptions,
+            $creator
         );
+
+        $visibility = ($data['visibility'] ?? 'private_invite') === 'public' ? 'public' : 'private_invite';
+        $cap = max(2, min((int) ($data['participant_cap'] ?? 2), (int) config('betting.max_participant_cap', 20)));
+        $fee = (float) config('betting.platform_fee_percent', 0);
 
         $market = Market::create([
             'uuid' => (string) Str::uuid(),
@@ -60,10 +66,12 @@ class MarketService
             'outcome_options' => $outcomeOptions,
             'creator_outcome' => $creatorOutcome,
             'stake_amount' => $stake,
+            'participant_cap' => $cap,
+            'min_participants' => 2,
             'status' => MarketStatus::Draft,
-            'visibility' => 'private_invite',
+            'visibility' => $visibility,
             'invite_token' => Str::random(48),
-            'platform_fee_percent' => 0,
+            'platform_fee_percent' => $fee,
             'betting_close_at' => $event->betting_close_at ?? $event->start_at,
             'dispute_window_hours' => config('betting.default_dispute_window_hours', 24),
             'review_flags' => $review['flags'] ?: null,
@@ -193,13 +201,13 @@ class MarketService
                 'terms_snapshot' => $termsSnapshot,
             ]);
 
-            // Creator stake should already be reserved on Open; idempotent if present.
+            // Creator stake should already be reserved on Open (user-scoped key); idempotent.
             $this->walletService->lockStake(
                 $market->creator,
                 $stake,
                 Market::class,
                 $market->id,
-                'stake_lock:market:'.$market->id.':creator'
+                $this->walletService->stakeLockKey($market, $market->creator)
             );
 
             $this->walletService->lockStake(
@@ -207,13 +215,14 @@ class MarketService
                 $stake,
                 Market::class,
                 $market->id,
-                'stake_lock:market:'.$market->id.':challenger'
+                $this->walletService->stakeLockKey($market, $challenger)
             );
 
             MarketParticipant::create([
                 'betting_market_id' => $market->id,
                 'user_id' => $market->creator_id,
                 'role' => 'creator',
+                'status' => 'active',
                 'outcome' => $market->creator_outcome,
                 'stake_amount' => $stake,
                 'market_version_id' => $version->id,
@@ -224,6 +233,7 @@ class MarketService
                 'betting_market_id' => $market->id,
                 'user_id' => $challenger->id,
                 'role' => 'challenger',
+                'status' => 'active',
                 'outcome' => $challengerOutcome,
                 'stake_amount' => $stake,
                 'market_version_id' => $version->id,
@@ -259,19 +269,32 @@ class MarketService
     {
         $this->assertCreator($market, $creator);
 
-        if (! in_array($market->status, [MarketStatus::Draft, MarketStatus::PendingReview, MarketStatus::Approved, MarketStatus::Open], true)) {
+        $cancellable = [MarketStatus::Draft, MarketStatus::PendingReview, MarketStatus::Approved, MarketStatus::Open, MarketStatus::PartiallyMatched];
+
+        if (! in_array($market->status, $cancellable, true)) {
             throw new RuntimeException('Cannot cancel market in current state.');
         }
 
-        return DB::transaction(function () use ($market, $creator) {
+        return DB::transaction(function () use ($market, $creator, $cancellable) {
             $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
 
-            if (! in_array($market->status, [MarketStatus::Draft, MarketStatus::PendingReview, MarketStatus::Approved, MarketStatus::Open], true)) {
+            if (! in_array($market->status, $cancellable, true)) {
                 throw new RuntimeException('Cannot cancel market in current state.');
             }
 
-            if ($market->status === MarketStatus::Open) {
+            if (in_array($market->status, [MarketStatus::Open, MarketStatus::PartiallyMatched], true)) {
                 $this->releaseCreatorReserve($market);
+                foreach ($market->participants()->with('user')->where('role', '!=', 'creator')->get() as $participant) {
+                    if ($this->walletService->hasStakeLockForMarket($participant->user, $market)) {
+                        $this->walletService->releaseStake(
+                            $participant->user,
+                            (float) $participant->stake_amount,
+                            Market::class,
+                            $market->id,
+                            $this->walletService->stakeReleaseKey($market, $participant->user)
+                        );
+                    }
+                }
             }
 
             return $this->stateMachine->transition($market, MarketStatus::Cancelled, $creator, 'cancelled_before_match');
@@ -283,11 +306,22 @@ class MarketService
         return DB::transaction(function () use ($market) {
             $market = Market::where('id', $market->id)->lockForUpdate()->firstOrFail();
 
-            if ($market->status !== MarketStatus::Open) {
+            if (! in_array($market->status, [MarketStatus::Open, MarketStatus::PartiallyMatched], true)) {
                 return $market;
             }
 
             $this->releaseCreatorReserve($market);
+            foreach ($market->participants()->with('user')->where('role', '!=', 'creator')->get() as $participant) {
+                if ($this->walletService->hasStakeLockForMarket($participant->user, $market)) {
+                    $this->walletService->releaseStake(
+                        $participant->user,
+                        (float) $participant->stake_amount,
+                        Market::class,
+                        $market->id,
+                        $this->walletService->stakeReleaseKey($market, $participant->user)
+                    );
+                }
+            }
 
             return $this->stateMachine->transition($market, MarketStatus::Expired, null, 'invite_expired');
         });
@@ -331,7 +365,7 @@ class MarketService
             (float) $market->stake_amount,
             Market::class,
             $market->id,
-            'stake_lock:market:'.$market->id.':creator'
+            $this->walletService->stakeLockKey($market, $market->creator)
         );
     }
 
@@ -348,7 +382,7 @@ class MarketService
             (float) $market->stake_amount,
             Market::class,
             $market->id,
-            'stake_release:market:'.$market->id.':creator'
+            $this->walletService->stakeReleaseKey($market, $market->creator)
         );
     }
 
@@ -381,16 +415,26 @@ class MarketService
         }
     }
 
+    public function assertBettingAllowedPublic(User $user, float $additionalStake, bool $requireAvailable = false): void
+    {
+        $this->assertBettingAllowed($user, $additionalStake, $requireAvailable);
+    }
+
     private function assertBettingAllowed(User $user, float $additionalStake, bool $requireAvailable = false): void
     {
         if (! $user->hasVerifiedEmail()) {
             throw new RuntimeException('Email verification required for betting.');
         }
 
+        $this->rg->clearExpiredRestrictions($user);
+        $user->unsetRelation('bettingProfile');
+
         $profile = $user->bettingProfile;
         if (! $profile || ! in_array($profile->account_state->value, ['play_only', 'verified'], true)) {
             throw new RuntimeException('Account not eligible for betting.');
         }
+
+        $this->rg->assertCanStake($user, $additionalStake);
 
         $exposure = $this->walletService->totalExposure($user);
         $max = (float) config('betting.max_open_liability_per_user', 20000);
@@ -414,7 +458,7 @@ class MarketService
             ->where('creator_id', $market->creator_id)
             ->where('creator_outcome', $market->creator_outcome)
             ->where('id', '!=', $market->id)
-            ->whereIn('status', ['open', 'fully_matched', 'locked', 'in_progress'])
+            ->whereIn('status', ['open', 'partially_matched', 'fully_matched', 'locked', 'in_progress'])
             ->exists();
     }
 

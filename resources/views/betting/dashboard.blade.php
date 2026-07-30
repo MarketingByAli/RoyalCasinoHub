@@ -34,9 +34,19 @@
         @endforelse
     </div>
 
-    <div class="mt-8 flex gap-4 flex-wrap">
+    <div class="mt-8 flex gap-4 flex-wrap" x-data="{ unread: 0 }" x-init="
+        const load = () => fetch('{{ route('betting.notifications.unread-count') }}', { headers: { 'Accept': 'application/json' }})
+            .then(r => r.json()).then(d => unread = d.count).catch(() => {});
+        load(); setInterval(load, 30000);
+    ">
         <a href="{{ route('betting.challenges.index') }}" class="text-amber-400 hover:underline">All my challenges</a>
-        <a href="{{ route('betting.notifications.index') }}" class="text-amber-400 hover:underline">Notifications</a>
+        <a href="{{ route('betting.explore.markets') }}" class="text-amber-400 hover:underline">Explore</a>
+        <a href="{{ route('betting.explore.events') }}" class="text-amber-400 hover:underline">Events</a>
+        <a href="{{ route('betting.leaderboard.weekly') }}" class="text-amber-400 hover:underline">Leaderboard</a>
+        <a href="{{ route('betting.notifications.index') }}" class="text-amber-400 hover:underline">
+            Notifications <span x-show="unread > 0" x-text="'('+unread+')'" class="text-amber-300"></span>
+        </a>
+        <a href="{{ route('betting.rg.edit') }}" class="text-amber-400 hover:underline">Responsible gambling</a>
         @if(auth()->user()->bettingProfile)
             <a href="{{ route('betting.profiles.show', auth()->user()->bettingProfile->username) }}" class="text-amber-400 hover:underline">My profile</a>
         @endif

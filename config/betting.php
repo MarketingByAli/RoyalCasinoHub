@@ -18,6 +18,18 @@ return [
 
     'invite_expiry_days' => 7,
 
+    'platform_fee_percent' => (float) env('BETTING_PLATFORM_FEE_PERCENT', 0),
+
+    'house_user_id' => env('BETTING_HOUSE_USER_ID') ? (int) env('BETTING_HOUSE_USER_ID') : null,
+
+    'faucet_points' => (int) env('BETTING_FAUCET_POINTS', 500),
+
+    'faucet_cooldown_hours' => (int) env('BETTING_FAUCET_COOLDOWN_HOURS', 24),
+
+    'referral_bonus_points' => (int) env('BETTING_REFERRAL_BONUS', 250),
+
+    'max_participant_cap' => 20,
+
     'prohibited_keywords' => [
         'suicide', 'self-harm', 'murder', 'death', 'assault', 'terrorism',
         'minor', 'child', 'underage', 'rape', 'harassment',
@@ -35,7 +47,7 @@ return [
         'gambling_psp_selected' => false,
         'legal_pages_published' => false,
         'geolocation_enforcement' => false,
-        'responsible_gambling_limits' => false,
+        'responsible_gambling_limits' => true,
     ],
 
     'real_money_enabled' => env('BETTING_REAL_MONEY', false) && env('BETTING_STAGE') === 'real_money',

@@ -59,6 +59,10 @@
             </div>
         @elseif(auth()->user()->bettingProfile)
             <a href="{{ route('betting.profiles.edit') }}" class="text-amber-400 text-sm hover:underline">Edit profile</a>
+            <div class="mt-4 p-4 rounded-xl border border-amber-900/25 bg-slate-900/40">
+                <p class="text-sm text-gray-400 mb-1">Your referral link</p>
+                <code class="text-amber-300 text-sm break-all">{{ url('/challenges/onboarding?ref='.$profile->referral_code) }}</code>
+            </div>
         @endif
     @endauth
 </div>

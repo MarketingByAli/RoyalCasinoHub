@@ -15,3 +15,5 @@ Schedule::command('casinos:check-links --limit=200')->daily();
 Schedule::command('betting:expire-markets')->hourly();
 Schedule::command('betting:finalize-disputes')->everyFifteenMinutes();
 Schedule::command('betting:advance-events')->everyFiveMinutes();
+Schedule::command('betting:snapshot-leaderboard')->weeklyOn(1, '0:05');
+Schedule::command('betting:reconcile-wallets')->dailyAt('03:30');

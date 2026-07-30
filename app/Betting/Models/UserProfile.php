@@ -27,6 +27,8 @@ class UserProfile extends Model
         'responsible_gambling_ack_at',
         'customer_funds_ack_at',
         'referral_code',
+        'referred_by_user_id',
+        'referral_credited_at',
         'hide_wager_amounts',
         'hide_betting_activity',
     ];
@@ -42,6 +44,7 @@ class UserProfile extends Model
             'marketing_consent_at' => 'datetime',
             'responsible_gambling_ack_at' => 'datetime',
             'customer_funds_ack_at' => 'datetime',
+            'referral_credited_at' => 'datetime',
             'hide_wager_amounts' => 'boolean',
             'hide_betting_activity' => 'boolean',
         ];
@@ -50,6 +53,11 @@ class UserProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'referred_by_user_id');
     }
 
     public function followers(): HasMany

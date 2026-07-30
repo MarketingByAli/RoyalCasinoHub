@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin\Betting;
 use App\Betting\Enums\MarketStatus;
 use App\Betting\Models\Market;
 use App\Betting\Services\MarketService;
+use App\Betting\Services\SettlementReversalService;
 use App\Betting\Services\SettlementService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MarketAdminController extends Controller
 {
@@ -97,7 +99,9 @@ class MarketAdminController extends Controller
 
     public function publishResult(Request $request, Market $market, SettlementService $settlementService)
     {
-        $validated = $request->validate(['winning_outcome' => 'required|string|max:100']);
+        $validated = $request->validate([
+            'winning_outcome' => ['required', 'string', 'max:100', Rule::in($market->outcome_options ?? [])],
+        ]);
 
         try {
             $settlementService->publishMarketResult($market, $validated['winning_outcome'], auth()->user());
@@ -106,6 +110,23 @@ class MarketAdminController extends Controller
         }
 
         return back()->with('success', 'Result published.');
+    }
+
+    public function reverse(Request $request, Market $market, SettlementReversalService $reversal)
+    {
+        $validated = $request->validate(['reason' => 'required|string|max:1000']);
+
+        try {
+            if ($request->boolean('void_after')) {
+                $reversal->reverseAndVoid($market, auth()->user(), $validated['reason']);
+            } else {
+                $reversal->reverseSettlement($market, auth()->user(), $validated['reason']);
+            }
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Settlement reversed.');
     }
 
     public function settle(Request $request, Market $market, SettlementService $settlementService)

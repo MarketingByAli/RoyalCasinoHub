@@ -20,6 +20,8 @@ class WalletAdminController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric',
             'reason' => 'required|string|max:500',
+            'reason_code' => 'required|string|max:64',
+            'market_id' => 'nullable|integer|exists:betting_markets,id',
             'confirm_reason' => 'required|string|same:reason',
             'confirm_username' => [
                 'required',
@@ -34,12 +36,14 @@ class WalletAdminController extends Controller
         ]);
 
         $idempotencyKey = 'manual_adjust:'.$user->id.':'.$validated['idempotency_key'];
+        $taggedReason = '['.$validated['reason_code'].'] '.$validated['reason']
+            .(! empty($validated['market_id']) ? ' market:'.$validated['market_id'] : '');
 
         try {
             $walletService->manualAdjust(
                 $user,
                 (float) $validated['amount'],
-                $validated['reason'],
+                $taggedReason,
                 auth()->user(),
                 $idempotencyKey
             );

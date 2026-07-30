@@ -22,15 +22,24 @@ class MarketPolicy
             return true;
         }
 
-        if ($market->status !== MarketStatus::Open) {
-            return false;
-        }
-
-        if ($market->visibility !== 'private_invite') {
+        if ($market->participants()->where('user_id', $user->id)->exists()) {
             return true;
         }
 
-        return $this->hasInviteAccess($market);
+        if (in_array($market->status, [MarketStatus::Open, MarketStatus::PartiallyMatched], true)
+            && $market->visibility === 'public') {
+            return true;
+        }
+
+        if ($market->status === MarketStatus::Open && $market->visibility === 'private_invite') {
+            return $this->hasInviteAccess($market);
+        }
+
+        if ($market->status === MarketStatus::PartiallyMatched && $market->visibility === 'private_invite') {
+            return $this->hasInviteAccess($market);
+        }
+
+        return false;
     }
 
     public function cancel(User $user, Market $market): bool
@@ -40,7 +49,11 @@ class MarketPolicy
 
     public function accept(User $user, Market $market): bool
     {
-        if ($market->creator_id === $user->id || $market->status !== MarketStatus::Open) {
+        if ($market->creator_id === $user->id) {
+            return false;
+        }
+
+        if (! in_array($market->status, [MarketStatus::Open, MarketStatus::PartiallyMatched], true)) {
             return false;
         }
 

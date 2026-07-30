@@ -9,6 +9,13 @@
             <div><dt class="text-gray-500 text-sm">Available</dt><dd class="text-2xl font-bold text-white">{{ number_format($wallet->available, 0) }}</dd></div>
             <div><dt class="text-gray-500 text-sm">Locked in bets</dt><dd class="text-2xl font-bold text-amber-400">{{ number_format($wallet->locked, 0) }}</dd></div>
         </dl>
+        @if($canClaimFaucet)
+            <form method="POST" action="{{ route('betting.wallet.faucet') }}">@csrf
+                <button class="mt-2 bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold px-4 py-2 rounded-lg text-sm">Claim daily faucet ({{ number_format(config('betting.faucet_points')) }} pts)</button>
+            </form>
+        @elseif($nextFaucetAt)
+            <p class="text-xs text-gray-500 mt-2">Next faucet available {{ $nextFaucetAt->diffForHumans() }}</p>
+        @endif
     </div>
     <h2 class="font-semibold text-white mb-3">Recent activity</h2>
     <ul class="text-sm space-y-2">

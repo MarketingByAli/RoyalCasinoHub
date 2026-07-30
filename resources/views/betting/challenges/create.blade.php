@@ -55,6 +55,17 @@
             <label class="block text-sm text-gray-300 mb-1">Stake (play points)</label>
             <input type="number" name="stake_amount" value="{{ old('stake_amount', 100) }}" required min="1" max="{{ config('betting.max_stake_per_market') }}" class="w-full bg-slate-950/60 border border-amber-900/35 rounded-xl px-4 py-2.5 text-white">
         </div>
+        <div>
+            <label class="block text-sm text-gray-300 mb-1">Seats (2 = 1v1, up to {{ config('betting.max_participant_cap', 20) }} for pools)</label>
+            <input type="number" name="participant_cap" value="{{ old('participant_cap', 2) }}" required min="2" max="{{ config('betting.max_participant_cap', 20) }}" class="w-full bg-slate-950/60 border border-amber-900/35 rounded-xl px-4 py-2.5 text-white">
+        </div>
+        <div>
+            <label class="block text-sm text-gray-300 mb-1">Visibility</label>
+            <select name="visibility" class="w-full bg-slate-950/60 border border-amber-900/35 rounded-xl px-4 py-2.5 text-white">
+                <option value="private_invite" @selected(old('visibility', 'private_invite') === 'private_invite')>Private invite only</option>
+                <option value="public" @selected(old('visibility') === 'public')>Public on Explore</option>
+            </select>
+        </div>
         <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold py-3 rounded-xl">Create & share</button>
     </form>
     @endif
